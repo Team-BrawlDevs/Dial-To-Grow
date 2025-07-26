@@ -75,9 +75,9 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
     const career = groqRes.choices[0].message.content.trim();
     console.log("🎯 Identified Career:", career);
     const { data: allMentors } = await supabase
-    .from("mentors")
-    .select("*, users(name)")
-    .eq("available", true);
+      .from("mentors")
+      .select("*, users(name)")
+      .eq("available", true);
     const { data: matchedMentors, error } = await supabase
       .from("mentors")
       .select("*, users(name)")
@@ -88,19 +88,19 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
       console.error("❌ Supabase mentor match error:", error.message);
     }
     const matchedMentor = allMentors?.filter((mentor) =>
-    mentor.expertise?.some((exp) =>
-    exp.toLowerCase().includes(career.toLowerCase())
-  )
-);
-console.log("mentor list:",matchedMentor);
+      mentor.expertise?.some((exp) =>
+        exp.toLowerCase().includes(career.toLowerCase())
+      )
+    );
+    console.log("mentor list:", matchedMentor);
 
     // const mentorIds = matchedMentors?.map((m) => m.user_id);
-    const mentorIds= matchedMentor?.map((m) => m.user_id);
+    const mentorIds = matchedMentor?.map((m) => m.user_id);
     console.log(
       "👥 Matched Mentors:",
       matchedMentors.map((m) => m.users?.name)
     );
-    console.log("ids: ",mentorIds);
+    console.log("ids: ", mentorIds);
 
     const { data: savedQuery, error: insertError } = await supabase
       .from("queries")
@@ -242,6 +242,7 @@ app.post("/api/respond", async (req, res) => {
 // Upload voice message
 app.post("/api/voice-upload", upload.single("audio"), (req, res) => {
   const { sender, room } = req.body;
+  console.log(req.file.filename);
   const filePath = `/uploads/${req.file.filename}`;
 
   const message = { sender, room, url: filePath, timestamp: Date.now() };
@@ -256,6 +257,7 @@ app.get("/api/voice-messages/:room", (req, res) => {
   const filtered = messages.filter((m) => m.room === room);
   res.json(filtered);
 });
+
 // ✅ Get accepted mentor for a mentee query
 app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
   const { menteeId } = req.params;
@@ -311,7 +313,7 @@ app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
     }
 
     // 4. Construct room ID
-    const room_id = `${menteeName}-${mentorName}`.replace(/\s+/g, "%20");
+    const room_id = `${menteeName}-${mentorName}`;
 
     res.json({
       room_id,
