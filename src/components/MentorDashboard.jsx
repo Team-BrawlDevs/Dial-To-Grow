@@ -38,7 +38,7 @@ const MentorDashboard = () => {
       setRequests((prev) => prev.filter((r) => r.id !== queryId));
 
       if (action === "accept") {
-        window.location.href = `/voice-room/${menteeName}-${user.name}`;
+        window.location.href = `/voice-room/${queryId}`;
       }
     } catch (error) {
       console.error("Error responding to request:", error);

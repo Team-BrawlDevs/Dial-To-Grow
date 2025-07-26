@@ -426,7 +426,7 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
         .on("end", resolve)
         .on("error", reject)
         .save(outputPath);
-    });
+    }).then(console.log("Successful response"));
 
     const form = new FormData();
     form.append("file", fs.createReadStream(outputPath));
@@ -459,9 +459,9 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
     const career = groqRes.choices[0].message.content.trim();
     console.log("🎯 Identified Career:", career);
     const { data: allMentors } = await supabase
-    .from("mentors")
-    .select("*, users(name)")
-    .eq("available", true);
+      .from("mentors")
+      .select("*, users(name)")
+      .eq("available", true);
     const { data: matchedMentors, error } = await supabase
       .from("mentors")
       .select("*, users(name)")
@@ -472,19 +472,19 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
       console.error("❌ Supabase mentor match error:", error.message);
     }
     const matchedMentor = allMentors?.filter((mentor) =>
-    mentor.expertise?.some((exp) =>
-    exp.toLowerCase().includes(career.toLowerCase())
-  )
-);
-console.log("mentor list:",matchedMentor);
+      mentor.expertise?.some((exp) =>
+        exp.toLowerCase().includes(career.toLowerCase())
+      )
+    );
+    console.log("mentor list:", matchedMentor);
 
     // const mentorIds = matchedMentors?.map((m) => m.user_id);
-    const mentorIds= matchedMentor?.map((m) => m.user_id);
+    const mentorIds = matchedMentor?.map((m) => m.user_id);
     console.log(
       "👥 Matched Mentors:",
       matchedMentors.map((m) => m.users?.name)
     );
-    console.log("ids: ",mentorIds);
+    console.log("ids: ", mentorIds);
 
     const { data: savedQuery, error: insertError } = await supabase
       .from("queries")
@@ -543,6 +543,8 @@ console.log("mentor list:",matchedMentor);
 // -----------------------------
 // 2️⃣ GET MENTOR-SPECIFIC REQUESTS
 // -----------------------------
+
+
 app.get("/api/requests/mentor/:mentorId", async (req, res) => {
   const { mentorId } = req.params;
 
@@ -626,6 +628,7 @@ app.post("/api/respond", async (req, res) => {
 // Upload voice message
 app.post("/api/voice-upload", upload.single("audio"), (req, res) => {
   const { sender, room } = req.body;
+  console.log(req.file.filename);
   const filePath = `/uploads/${req.file.filename}`;
 
   const message = { sender, room, url: filePath, timestamp: Date.now() };
@@ -640,6 +643,7 @@ app.get("/api/voice-messages/:room", (req, res) => {
   const filtered = messages.filter((m) => m.room === room);
   res.json(filtered);
 });
+
 // ✅ Get accepted mentor for a mentee query
 app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
   const { menteeId } = req.params;
@@ -695,9 +699,10 @@ app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
     }
 
     // 4. Construct room ID
-    const room_id = `${menteeName}-${mentorName}`.replace(/\s+/g, "%20");
+    const room_id = `${menteeName}-${mentorName}`;
 
     res.json({
+      query_id: queryId,
       room_id,
       mentor: {
         id: mentorId,
@@ -709,6 +714,65 @@ app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Add this to your existing Express backend
+
+// -------------------------
+// 4️⃣ CHAT MESSAGES (Text + Audio)
+// -------------------------
+
+// Get messages for a query
+app.get("/api/chat/:queryId", async (req, res) => {
+  const { queryId } = req.params;
+  
+
+  try {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("query_id", queryId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching chat messages:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send message (text or audio)
+app.post("/api/chat", upload.single("audio"), async (req, res) => {
+  try {
+    const { query_id, sender_id, message } = req.body;
+    let audio_url = null;
+
+    if (req.file) {
+      audio_url = `/uploads/${req.file.filename}`;
+    }
+
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .insert([
+        {
+          query_id: parseInt(query_id),
+          sender_id: parseInt(sender_id),
+          message,
+          audio_url,
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.json(data[0]);
+  } catch (err) {
+    console.error("❌ Error sending chat message:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ----------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

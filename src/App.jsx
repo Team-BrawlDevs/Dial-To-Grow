@@ -19,10 +19,10 @@ import PodcastRecorder from "./components/PodcastRecorder.jsx";
 
 
 const VoiceRoomWrapper = () => {
-  const { roomId } = useParams();
+  const { queryId } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  return <VoiceRoom roomId={roomId} sender={user?.name || "Anonymous"} />;
+  return <VoiceRoom queryId={queryId} senderId={user?.id} sender={user?.name || "Anonymous"} />;
 };
 const App = () => {
   return (
