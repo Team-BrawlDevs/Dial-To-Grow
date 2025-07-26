@@ -7,7 +7,7 @@ const MenteeDashboard = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
   const [status, setStatus] = useState("");
-  const [roomId, setRoomId] = useState(null);
+  const [queryId, setQueryId] = useState(null);
   const [mentorName, setMentorName] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunks = useRef([]);
@@ -19,8 +19,8 @@ const MenteeDashboard = () => {
         const res = await axios.get(
           `http://localhost:5000/api/assigned-mentor/${user.id}`
         );
-        if (res.data && res.data.room_id) {
-          setRoomId(res.data.room_id);
+        if (res.data && res.data.query_id) {
+          setQueryId(res.data.query_id);
           setMentorName(res.data.mentor?.name || "Mentor");
         }
       } catch (err) {
@@ -61,14 +61,14 @@ const MenteeDashboard = () => {
     const res = await axios.post("http://localhost:5000/api/query", formData);
     setAudioURL(res.data.audio_url);
     setStatus(`Success! Career: ${res.data.career}`);
-    console.log("Sending to roomId:", roomId);
+    console.log("Sending to queryId:", queryId);
 
     // ✅ Also upload to mentor via voice-upload API
-    if (roomId) {
+    if (queryId) {
       const voiceForm = new FormData();
       voiceForm.append("audio", blob, `${Date.now()}.webm`);
       voiceForm.append("sender", user.name);
-      voiceForm.append("room", roomId);
+      voiceForm.append("room", queryId);
 
       await axios.post("http://localhost:5000/api/voice-upload", voiceForm);
     }
@@ -101,10 +101,10 @@ const MenteeDashboard = () => {
       )}
 
       {/* If mentor is assigned, render the voice chat */}
-      {roomId && (
+      {queryId && (
         <div>
           <h3>Chat with {mentorName}</h3>
-          <VoiceRoom mediaRec={mediaRecorderRef} roomId={roomId} sender={user?.name || "Mentee"} />
+          <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
         </div>
       )}
     </div>

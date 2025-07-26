@@ -10,6 +10,7 @@ import { Groq } from "groq-sdk";
 import dotenv from "dotenv";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
+import { log } from "console";
 
 dotenv.config();
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -42,7 +43,7 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
         .on("end", resolve)
         .on("error", reject)
         .save(outputPath);
-    });
+    }).then(console.log("Successful response"));
 
     const form = new FormData();
     form.append("file", fs.createReadStream(outputPath));
@@ -159,6 +160,8 @@ app.post("/api/query", upload.single("audio"), async (req, res) => {
 // -----------------------------
 // 2️⃣ GET MENTOR-SPECIFIC REQUESTS
 // -----------------------------
+
+
 app.get("/api/requests/mentor/:mentorId", async (req, res) => {
   const { mentorId } = req.params;
 
@@ -316,6 +319,7 @@ app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
     const room_id = `${menteeName}-${mentorName}`;
 
     res.json({
+      query_id: queryId,
       room_id,
       mentor: {
         id: mentorId,
@@ -327,6 +331,65 @@ app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Add this to your existing Express backend
+
+// -------------------------
+// 4️⃣ CHAT MESSAGES (Text + Audio)
+// -------------------------
+
+// Get messages for a query
+app.get("/api/chat/:queryId", async (req, res) => {
+  const { queryId } = req.params;
+  
+
+  try {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("query_id", queryId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching chat messages:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send message (text or audio)
+app.post("/api/chat", upload.single("audio"), async (req, res) => {
+  try {
+    const { query_id, sender_id, message } = req.body;
+    let audio_url = null;
+
+    if (req.file) {
+      audio_url = `/uploads/${req.file.filename}`;
+    }
+
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .insert([
+        {
+          query_id: parseInt(query_id),
+          sender_id: parseInt(sender_id),
+          message,
+          audio_url,
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.json(data[0]);
+  } catch (err) {
+    console.error("❌ Error sending chat message:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ----------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
