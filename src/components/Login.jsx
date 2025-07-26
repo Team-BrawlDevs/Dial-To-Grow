@@ -33,9 +33,9 @@ export default function Login() {
 
         // Redirect to appropriate dashboard
         if (loggedInUser.role === "mentor") {
-          navigate("/mentor");
+          navigate(`/mentor/${loggedInUser.id}`);
         } else {
-          navigate("/mentee");
+          navigate(`/mentee/${loggedInUser.id}`);
         }
       }
     } catch (error) {

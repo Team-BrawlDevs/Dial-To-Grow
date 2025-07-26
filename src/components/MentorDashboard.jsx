@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const MentorDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user")); // Must contain mentor's ID, name, and expertise
   const [requests, setRequests] = useState([]);
+  const navigate=useNavigate();
 
   useEffect(() => {
     if (user?.id) {
@@ -47,7 +49,12 @@ const MentorDashboard = () => {
     <div className="container">
       <h2>Welcome Mentor {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
-
+      <button
+        onClick={() => navigate(`/mentor/${user.id}/podcast`)}
+        style={{ marginBottom: "20px" }}
+      >
+        🎙️ My Podcasts
+      </button>
       <h3>Pending Mentee Requests:</h3>
       {requests.length === 0 ? (
         <p>No requests currently.</p>

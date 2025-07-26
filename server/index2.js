@@ -10,6 +10,11 @@ import { Groq } from "groq-sdk";
 import dotenv from "dotenv";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
+import { log } from "console";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -28,9 +33,388 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 let messages = [];
+// 🔹 Get podcast metadata
+app.get("/api/podcasts/:podcastId", async (req, res) => {
+  const { podcastId } = req.params;
+  const { data, error } = await supabase
+    .from("podcasts")
+    .select("id, title, description")
+    .eq("id", podcastId)
+    .single();
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+});
+
+// 🔹 Get episodes of a podcast
+app.get("/api/podcasts/:podcastId/episodes", async (req, res) => {
+  const { podcastId } = req.params;
+
+  const { data, error } = await supabase
+    .from("podcast_episodes")
+    .select("*")
+    .eq("podcast_id", podcastId)
+    .order("created_at", { ascending: false });
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+});
+
+// 🔹 Upload audio and create episode
+app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req, res) => {
+  const { podcastId } = req.params;
+  const { title } = req.body;
+  const file = req.file;
+  console.log("fir:",file);
+
+  if (!file || !title) {
+    return res.status(400).json({ error: "Title and audio are required." });
+  }
+
+  try {
+    const fileExt = path.extname(file.originalname)||".webm";
+    console.log("FIle extension",fileExt);
+    const filePath = `episodes/${Date.now()}${fileExt}`;
+    console.log("FilePath:",filePath);
+    
+
+
+    // ✅ Read file as buffer instead of stream
+    const fileBuffer = fs.readFileSync(file.path);
+
+    // ✅ Upload to Supabase Storage using buffer
+    const { data: storageData, error: uploadError } = await supabase.storage
+      .from("podcast-library")
+      .upload(filePath, fileBuffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("podcast-library").getPublicUrl(filePath);
+
+    // Insert episode into DB
+    const { data: insertData, error: dbError } = await supabase
+      .from("podcast_episodes")
+      .insert([
+        {
+          podcast_id: podcastId,
+          title,
+          audio_url: publicUrl,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    // Cleanup local file
+    fs.unlinkSync(file.path);
+
+    res.json({ message: "Episode uploaded", episode: insertData });
+  } catch (err) {
+    console.error("Upload failed:", err);
+    res.status(500).json({ error: "Upload failed", details: err.message });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+app.get("/api/podcasts/:podcastId/episodes", async (req, res) => {
+  const { podcastId } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from("podcast_episodes")
+      .select("*")
+      .eq("podcast_id", podcastId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching episodes:", err.message);
+    res.status(500).json({ error: "Could not fetch episodes" });
+  }
+}); 
+
+app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req, res) => {
+  const { podcastId } = req.params;
+  const { title } = req.body;
+  const file = req.file;
+
+  if (!title || !file) return res.status(400).json({ error: "Missing title or audio file" });
+
+  try {
+    const ext = file.originalname.split(".").pop();
+    const filePath = `episodes/${Date.now()}_${file.originalname}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("podcasts")
+      .upload(filePath, fs.createReadStream(file.path), {
+        contentType: file.mimetype,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage.from("audio").getPublicUrl(filePath);
+
+    const { error: insertError } = await supabase.from("podcast_episodes").insert({
+      podcast_id: podcastId,
+      title,
+      audio_url: publicUrl,
+    });
+
+    if (insertError) throw insertError;
+
+    res.json({ message: "Episode uploaded!" });
+  } catch (err) {
+    console.error("Upload error:", err.message);
+    res.status(500).json({ error: "Failed to upload episode" });
+  }
+});
+
+app.get("/api/mentors/:mentorId/podcasts", async (req, res) => {
+  const { mentorId } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from("podcasts")
+      .select("*")
+      .eq("mentor_id", mentorId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching mentor podcasts:", error.message);
+      return res.status(500).json({ error: "Failed to fetch podcasts" });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error("Unexpected server error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/api/podcasts", async (req, res) => {
+  try {
+    const { mentor_id, title, description, career_path, original_language_id } = req.body;
+
+    const { data, error } = await supabase.from("podcasts").insert([
+      {
+        mentor_id,
+        title,
+        description,
+        career_path,
+        original_language_id,
+      },
+    ]).select().single();
+
+    if (error) throw error;
+
+    res.json({ podcast: data });
+  } catch (err) {
+    console.error("❌ Error creating podcast:", err.message);
+    res.status(500).json({ error: "Failed to create podcast." });
+  }
+});
+
+// Upload episode to podcast
+app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req, res) => {
+  try {
+    const { podcastId } = req.params;
+    const { title } = req.body;
+    const audioFile = req.file;
+
+    if (!audioFile) {
+      return res.status(400).json({ error: "No audio file uploaded" });
+    }
+
+    const inputPath = audioFile.path;
+    const wavPath = `${inputPath}.wav`;
+
+    // Convert to WAV using ffmpeg
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .toFormat("wav")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(wavPath);
+    });
+
+    const duration = await new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(wavPath, (err, metadata) => {
+        if (err) return reject(err);
+        resolve(metadata.format.duration);
+      });
+    });
+
+    const publicUrl = `/uploads/${path.basename(wavPath)}`;
+
+    const { data, error } = await supabase.from("podcast_episodes").insert([
+      {
+        podcast_id: podcastId,
+        title,
+        audio_url: publicUrl,
+        duration_seconds: Math.round(duration),
+      },
+    ]).select().single();
+
+    if (error) throw error;
+
+    res.json({ episode: data });
+  } catch (err) {
+    console.error("❌ Error uploading episode:", err.message);
+    res.status(500).json({ error: "Failed to upload episode." });
+  }
+});
 // ----------------------
 // 1️⃣ AUDIO QUERY ROUTE
 // ----------------------
+// ----------------------
+// 🎤 Voice Mentor Endpoint
+// ----------------------
+app.post("/api/mentor-chat", upload.single("audio"), async (req, res) => {
+  try {
+    console.log("hello");
+    
+    const inputPath = req.file.path;
+    const wavPath = `${inputPath}.wav`;
+
+    // Convert input to WAV
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .toFormat("wav")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(wavPath);
+    });
+
+    const languageCode = "ta-IN";
+
+    // 1️⃣ Speech-to-Text (Sarvam)
+    const sttForm = new FormData();
+    sttForm.append("file", fs.createReadStream(wavPath));
+    sttForm.append("language_code", languageCode);
+
+    const sttRes = await fetch("https://api.sarvam.ai/speech-to-text", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": process.env.SARVAM_API_KEY,
+        ...sttForm.getHeaders(),
+      },
+      body: sttForm,
+    });
+
+    const sttJson = await sttRes.json();
+    const transcript = sttJson?.transcript?.trim() || "";
+
+    console.log("📝 Transcript:", transcript);
+
+    // Maintain simple history from frontend if needed
+    const previousHistory = JSON.parse(req.body.history || "[]");
+
+    // 2️⃣ Groq LLaMA Response
+    const systemMsg = {
+      role: "system",
+      content: `You are a mentor. Please respond in original ${languageCode} language. Also Motivate with your response. Let the response be releavnt and add few famous idioms,phrases and quotes of that language. If language is "en-IN", respond in english. Let the response be short(within 500 characters), but it must give all details and motivation. Don't include any symbols.`,
+    };
+
+    const chatRes = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [
+        systemMsg,
+        ...previousHistory,
+        { role: "user", content: transcript },
+      ],
+    });
+    const replyText = chatRes.choices[0].message.content.trim();
+
+    console.log("🧠 Reply:", replyText);
+
+   const CHUNK_SIZE = 300;
+    const splitText = (str) => {
+      const chunks = [];
+      let remaining = str.trim();
+      while (remaining.length > 0) {
+        let chunk = remaining.slice(0, CHUNK_SIZE);
+        const lastPunct = chunk.lastIndexOf(".");
+        if (lastPunct > 100) chunk = chunk.slice(0, lastPunct + 1);
+        chunks.push(chunk.trim());
+        remaining = remaining.slice(chunk.length).trim();
+      }
+      return chunks;
+    };
+
+    const chunks = splitText(replyText);
+    const audioPaths = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const ttsRes = await fetch("https://api.sarvam.ai/text-to-speech", {
+        method: "POST",
+        headers: {
+          "api-subscription-key": process.env.SARVAM_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: chunks[i],
+          language: languageCode,
+        }),
+      });
+
+      const ttsJson = await ttsRes.json();
+      const base64Audio = ttsJson?.audios?.[0];
+      if (!base64Audio) continue;
+
+      const buffer = Buffer.from(base64Audio, "base64");
+      const audioDir = path.join(__dirname, "uploads");
+      fs.mkdirSync(audioDir, { recursive: true });
+
+      const audioPath = path.join(audioDir, `chunk_${i}_${Date.now()}.wav`);
+      fs.writeFileSync(audioPath, buffer);
+      audioPaths.push(audioPath);
+    }
+
+    // 4️⃣ Merge with FFmpeg
+    const concatListPath = path.join(__dirname, "uploads", `list_${Date.now()}.txt`);
+    const concatListContent = audioPaths.map((p) => `file '${p}'`).join("\n");
+    fs.writeFileSync(concatListPath, concatListContent);
+
+    const finalFilename = `bot_${Date.now()}.wav`;
+    const finalPath = path.join(__dirname, "uploads", finalFilename);
+
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(concatListPath)
+        .inputOptions("-f", "concat", "-safe", "0")
+        .outputOptions("-c", "copy")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(finalPath);
+    });
+
+    // Cleanup chunks
+    setTimeout(() => {
+      for (const file of [...audioPaths, concatListPath, inputPath, wavPath]) {
+        fs.unlink(file, () => {});
+      }
+    }, 15000);
+
+    res.json({
+      transcript,
+      reply: replyText,
+      bot_audio_url: `/uploads/${finalFilename}`,
+    });
+  } catch (err) {
+    console.error("❌ Error in /api/mentor-chat:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/query", upload.single("audio"), async (req, res) => {
   try {
     const inputPath = req.file.path;

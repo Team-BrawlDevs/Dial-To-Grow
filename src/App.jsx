@@ -12,6 +12,11 @@ import MenteeDashboard from "./components/MenteeDashboard";
 import MentorDashboard from "./components/MentorDashboard";
 import { AuthProvider } from "./auth.jsx";
 import VoiceRoom from "./components/VoiceRoom.jsx";
+import AIMentor from "./components/AIMentor.jsx";
+import PodcastUploader from "./components/PodcastUploader.jsx";
+import PodcastList from "./components/PodcastList.jsx";
+import PodcastRecorder from "./components/PodcastRecorder.jsx";
+
 
 const VoiceRoomWrapper = () => {
   const { roomId } = useParams();
@@ -27,9 +32,13 @@ const App = () => {
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/mentee" element={<MenteeDashboard />} />
-          <Route path="/mentor" element={<MentorDashboard />} />
+          <Route path="/mentee/:id" element={<MenteeDashboard />} />
+          <Route path="/mentor/:id" element={<MentorDashboard />} />
           <Route path="/voice-room/:roomId" element={<VoiceRoomWrapper />} />
+          <Route path="/aimentor" element={<AIMentor   />} />
+          <Route path="/mentor/:id/podcast" element={<PodcastList   />} />
+          <Route path="/mentor/:id/podcast/new" element={<PodcastUploader   />} />
+          <Route path="/mentor/:id/podcast/:podcastId/recorder" element={<PodcastRecorder />} />
         </Routes>
       </AuthProvider>
     </Router>
