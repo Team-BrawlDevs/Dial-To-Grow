@@ -44,7 +44,6 @@
 
 .recording-button {
   padding: 16px;
-  background: #f1f3f5;
   border-top: 1px solid #dee2e6;
   position: sticky;
   bottom: 0;
@@ -105,7 +104,7 @@
 .message-bubble.own {
   align-self: flex-end;
   background: #d1e7dd;
-  align-items: flex-start; /* 👈 Ensures audio behaves the same as left */
+  align-items: flex-start; 
 }
 
 .sender {
@@ -179,4 +178,17 @@
 .text-message {
   font-size: 15px;
   padding: 6px 2px;
+}
+
+
+.chat-controls{
+    display: flex;
+    align-items: center;
+    gap:5px;
+}
+
+.cont{
+    
+    display: flex;
+    justify-content: center;
 }
