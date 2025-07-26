@@ -21,7 +21,7 @@ app.get("/", (req, res) => {
   res.send("Mentor-Mentee App Server is Running!");
 });
 
-// Login route
+// ---------------------- LOGIN ----------------------
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -54,7 +54,106 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Start server
+// ---------------------- REGISTER ----------------------
+app.post("/api/register", async (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    age,
+    role,
+    region,
+    career,
+    expertise,
+    experience_years,
+    bio,
+    voice_call,
+    languages
+  } = req.body;
+
+  const client = supabase;
+
+  
+
+  try {
+    // Insert into users table
+    const { data: userData, error: userError } = await client
+      .from("users")
+      .insert([
+        {
+          name,
+          email,
+          password,
+          age,
+          role,
+          region,
+          career
+        }
+      ])
+      .select()
+      .single();
+
+    if (userError) throw userError;
+
+    const userId = userData.id;
+  console.log(userId);
+
+    // If mentor, insert into mentors table
+    if (role === "mentor") {
+      let boobs = expertise?expertise.split(", "):[]
+      
+      const { error: mentorError } = await client
+        .from("mentors")
+        .insert([
+          {
+            user_id: userId,
+            expertise: boobs,
+            experience_years: experience_years || 0,
+            bio: bio || "",
+            available: voice_call || false
+          }
+        ]);
+
+      if (mentorError) throw mentorError;
+    }
+
+    // Insert preferred languages into user_languages
+    if (Array.isArray(languages)) {
+      const langInserts = languages.map((langId) => ({
+        user_id: userId,
+        language_id: langId
+      }));
+
+      const { error: langError } = await client
+        .from("user_languages")
+        .insert(langInserts);
+
+      if (langError) throw langError;
+    }
+
+    return res.status(201).json({
+      message: "User registered successfully",
+      user: userData
+    });
+  } catch (err) {
+    console.error("Register Error:", err);
+    return res.status(500).json({ error: "Registration failed" });
+  }
+});
+
+// ---------------------- GET LANGUAGES ----------------------
+app.get("/api/languages", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("languages").select("*");
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Language Fetch Error:", err);
+    res.status(500).json({ error: "Failed to fetch languages" });
+  }
+});
+
+// ---------------------- START SERVER ----------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
