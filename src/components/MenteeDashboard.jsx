@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import VoiceRoom from "./VoiceRoom"; // import the component
 import { useNavigate } from "react-router-dom";
 
 const MenteeDashboard = () => {
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
@@ -85,6 +87,26 @@ const MenteeDashboard = () => {
 
 
   return (
+    <div style={{ position: "relative" }}>
+  {/* Top-right button */}
+  <button 
+  onClick={() => navigate("/groups")}
+  style={{
+    position: "absolute",
+    top: "5px",
+    right: "60px",
+    width:"100px",
+    padding: "8px 12px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer"
+    
+  }}
+  >
+    Join Community
+  </button>
     <div className="container">
       <h2>Welcome Mentee {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
@@ -112,6 +134,7 @@ const MenteeDashboard = () => {
           <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
         </div>
       )}
+    </div>
     </div>
   );
 };

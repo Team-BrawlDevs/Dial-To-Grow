@@ -24,7 +24,13 @@ const VoiceRoomWrapper = () => {
   const { queryId } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  return <VoiceRoom queryId={queryId} senderId={user?.id} sender={user?.name || "Anonymous"} />;
+  return (
+    <VoiceRoom
+      queryId={queryId}
+      senderId={user?.id}
+      sender={user?.name || "Anonymous"}
+    />
+  );
 };
 const App = () => {
   return (
