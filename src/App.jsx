@@ -34,11 +34,12 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/mentee/:id" element={<MenteeDashboard />} />
           <Route path="/mentor/:id" element={<MentorDashboard />} />
-          <Route path="/voice-room/:roomId" element={<VoiceRoomWrapper />} />
+          <Route path="/voice-room/:queryId" element={<VoiceRoomWrapper />} />
           <Route path="/aimentor" element={<AIMentor   />} />
           <Route path="/mentor/:id/podcast" element={<PodcastList   />} />
           <Route path="/mentor/:id/podcast/new" element={<PodcastUploader   />} />
           <Route path="/mentor/:id/podcast/:podcastId/recorder" element={<PodcastRecorder />} />
+
         </Routes>
       </AuthProvider>
     </Router>
