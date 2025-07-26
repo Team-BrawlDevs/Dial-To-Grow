@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import VoiceRoom from "./VoiceRoom"; // import the component
+import { useNavigate } from "react-router-dom";
 
 const MenteeDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -11,6 +12,7 @@ const MenteeDashboard = () => {
   const [mentorName, setMentorName] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunks = useRef([]);
+  const navigate=useNavigate();
 
   useEffect(() => {
     // Fetch assigned mentor and room ID
@@ -86,6 +88,9 @@ const MenteeDashboard = () => {
     <div className="container">
       <h2>Welcome Mentee {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
+      <button onClick={() => navigate(`/explore/${user.id}`)}>
+  Explore Courses
+</button>
 
       <div>
         <button onClick={isRecording ? stopRecording : startRecording}>

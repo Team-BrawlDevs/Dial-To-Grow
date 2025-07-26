@@ -16,6 +16,8 @@ import AIMentor from "./components/AIMentor.jsx";
 import PodcastUploader from "./components/PodcastUploader.jsx";
 import PodcastList from "./components/PodcastList.jsx";
 import PodcastRecorder from "./components/PodcastRecorder.jsx";
+import ExploreCourses from "./components/ExploreCourses.jsx";
+import PodcastEpisodes from "./components/PodcastEpisode.jsx";
 
 
 const VoiceRoomWrapper = () => {
@@ -39,7 +41,8 @@ const App = () => {
           <Route path="/mentor/:id/podcast" element={<PodcastList   />} />
           <Route path="/mentor/:id/podcast/new" element={<PodcastUploader   />} />
           <Route path="/mentor/:id/podcast/:podcastId/recorder" element={<PodcastRecorder />} />
-
+          <Route path="/explore/:userId" element={<ExploreCourses />} />
+          <Route path="/podcast/:userId/:podcastId" element={<PodcastEpisodes />} />
         </Routes>
       </AuthProvider>
     </Router>

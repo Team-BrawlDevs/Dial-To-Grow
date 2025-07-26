@@ -12,6 +12,7 @@ import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
 import { log } from "console";
 import { fileURLToPath } from "url";
+import axios from "axios";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,13 +27,216 @@ app.use(cors());
 app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 app.use("/uploads", express.static("uploads")); // for serving audio
-
+app.use("/audios", express.static("audios"));
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 let messages = [];
+const languageCode = "ta-IN";
+//play epi in mentee lang
+
+
+app.get("/api/podcast-episodes/:podcastId", async (req, res) => {
+  try {
+    const podcastId = req.params.podcastId;
+    const menteeId = req.query.mentee_id;
+
+    console.log(`📌 Podcast ID: ${podcastId}`);
+    console.log(`👤 Mentee ID: ${menteeId}`);
+    console.log(`📥 Fetching episodes for podcast ID...`);
+
+    const { data: episodes, error: episodeError } = await supabase
+      .from("podcast_episodes")
+      .select("*")
+      .eq("podcast_id", podcastId);
+
+    if (episodeError) {
+      console.error("❌ Error fetching episodes:", episodeError.message);
+      return res.status(500).json({ error: "Error fetching episodes" });
+    }
+
+    console.log(`✅ Episodes fetched: ${episodes.length}`);
+
+    const episode = episodes[0];
+    if (!episode) return res.status(404).json({ error: "Episode not found" });
+
+    console.log("📥 Fetching mentee language preference...");
+
+    const { data: userLangData, error: langError } = await supabase
+      .from("user_languages")
+      .select("languages(name)")
+      .eq("user_id", menteeId)
+      .limit(1)
+      .single();
+
+    if (langError || !userLangData) {
+      console.error("❌ Error fetching mentee language:", langError?.message);
+      return res.status(500).json({ error: "Error fetching mentee language" });
+    }
+
+    const languageName = userLangData.languages.name.toLowerCase();
+    const languageMap = {
+      tamil: "ta-IN",
+      telugu: "te-IN",
+      hindi: "hi-IN",
+      bengali: "bn-IN",
+      kannada: "kn-IN",
+      malayalam: "ml-IN",
+      marathi: "mr-IN",
+      punjabi: "pa-IN",
+      gujarati: "gu-IN",
+      oriya: "or-IN",
+      english: "en-IN"
+    };
+
+    const targetLangCode = languageMap[languageName] || "en-IN";
+    console.log(`🌐 Target language code resolved: ${targetLangCode}`);
+
+    console.log("🔁 Translating episode content...");
+
+    const translationResponse = await axios.post(
+      "https://api.sarvam.ai/translate",
+      {
+        input: episode.transcript,
+        source_language_code: "auto",
+        target_language_code: targetLangCode,
+      },
+      {
+        headers: {
+          "api-subscription-key": process.env.SARVAM_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const translatedText = translationResponse.data.translated_text;
+    console.log(`✅ Translated Text: ${translatedText}`);
+
+     console.log("🎤 Performing TTS with chunking...");
+    const CHUNK_SIZE = 300;
+    const splitText = (str) => {
+      const chunks = [];
+      let remaining = str.trim();
+      while (remaining.length > 0) {
+        let chunk = remaining.slice(0, CHUNK_SIZE);
+        const lastPunct = chunk.lastIndexOf(".");
+        if (lastPunct > 100) chunk = chunk.slice(0, lastPunct + 1);
+        chunks.push(chunk.trim());
+        remaining = remaining.slice(chunk.length).trim();
+      }
+      return chunks;
+    };
+
+    const chunks = splitText(translatedText);
+    const audioPaths = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const ttsRes = await fetch("https://api.sarvam.ai/text-to-speech", {
+        method: "POST",
+        headers: {
+          "api-subscription-key": process.env.SARVAM_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: chunks[i],
+          language: targetLangCode,
+        }),
+      });
+
+      const ttsJson = await ttsRes.json();
+      const base64Audio = ttsJson?.audios?.[0];
+      if (!base64Audio) continue;
+
+      const buffer = Buffer.from(base64Audio, "base64");
+      const audioDir = path.join(__dirname, "uploads");
+      fs.mkdirSync(audioDir, { recursive: true });
+
+      const audioPath = path.join(audioDir, `chunk_${i}_${Date.now()}.wav`);
+      fs.writeFileSync(audioPath, buffer);
+      audioPaths.push(audioPath);
+    }
+
+    if (audioPaths.length === 0) {
+      throw new Error("No audio chunks generated.");
+    }
+
+    // 5️⃣ Merge audio chunks with FFmpeg
+    const concatListPath = path.join(__dirname, "uploads", `list_${Date.now()}.txt`);
+    const concatListContent = audioPaths.map((p) => `file '${p}'`).join("\n");
+    fs.writeFileSync(concatListPath, concatListContent);
+
+    const finalFilename = `bot_${Date.now()}.wav`;
+    const finalPath = path.join(__dirname, "uploads", finalFilename);
+
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(concatListPath)
+        .inputOptions("-f", "concat", "-safe", "0")
+        .outputOptions("-c", "copy")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(finalPath);
+    });
+
+    // 6️⃣ Cleanup temp chunks after 15s
+    setTimeout(() => {
+      for (const file of [...audioPaths, concatListPath]) {
+        fs.unlink(file, () => {});
+      }
+    }, 15000);
+    console.log("File name: ",finalFilename);
+    // 7️⃣ Send response
+    res.json([
+  {
+    id: episode.id,
+    title: episode.title,
+    audio_url: `http://localhost:5000/uploads/${finalFilename}`,
+  }
+]);
+
+  } catch (err) {
+    console.error("💥 Unexpected error:", err);
+    res.status(500).json({ error: err.message || "Something went wrong." });
+  }
+});
+
+
+//Explore courses
+app.get("/api/courses/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Step 1: Fetch career from users table
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("career")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: "User not found or career missing" });
+    }
+
+    const career = userData.career;
+
+    // Step 2: Fetch podcasts matching the career
+    const { data: podcasts, error: podcastError } = await supabase
+      .from("podcasts")
+      .select("id,title, description")
+      .ilike("career_path", `%${career}%`); // Case-insensitive match
+
+    if (podcastError) {
+      return res.status(500).json({ error: "Error fetching podcasts" });
+    }
+
+    res.json(podcasts);
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 // 🔹 Get podcast metadata
 app.get("/api/podcasts/:podcastId", async (req, res) => {
   const { podcastId } = req.params;
@@ -65,39 +269,63 @@ app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req
   const { podcastId } = req.params;
   const { title } = req.body;
   const file = req.file;
-  console.log("fir:",file);
+
 
   if (!file || !title) {
     return res.status(400).json({ error: "Title and audio are required." });
   }
 
+  const tempWavPath = `${file.path}.wav`;
+
   try {
-    const fileExt = path.extname(file.originalname)||".webm";
-    console.log("FIle extension",fileExt);
-    const filePath = `episodes/${Date.now()}${fileExt}`;
-    console.log("FilePath:",filePath);
-    
+    // ✅ Convert input audio to .wav using FFmpeg
+    await new Promise((resolve, reject) => {
+      ffmpeg(file.path)
+        .setFfmpegPath(ffmpegPath)
+        .toFormat("wav")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(tempWavPath);
+    });
 
-
-    // ✅ Read file as buffer instead of stream
+    const fileExt = path.extname(file.originalname) || ".webm";
+    const storagePath = `episodes/${Date.now()}${fileExt}`;
     const fileBuffer = fs.readFileSync(file.path);
 
-    // ✅ Upload to Supabase Storage using buffer
+    // ✅ Upload original audio to Supabase
     const { data: storageData, error: uploadError } = await supabase.storage
       .from("podcast-library")
-      .upload(filePath, fileBuffer, {
+      .upload(storagePath, fileBuffer, {
         contentType: file.mimetype,
         upsert: false,
       });
 
     if (uploadError) throw uploadError;
 
-    // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from("podcast-library").getPublicUrl(filePath);
+    } = supabase.storage.from("podcast-library").getPublicUrl(storagePath);
 
-    // Insert episode into DB
+    // ✅ Prepare and send to Sarvam STT
+    const form = new FormData();
+    form.append("file", fs.createReadStream(tempWavPath));
+    form.append("language_code", languageCode);
+
+    const sttResponse = await fetch("https://api.sarvam.ai/speech-to-text", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": process.env.SARVAM_API_KEY,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    const sttJson = await sttResponse.json();
+    console.log("STT Json",sttJson);
+    
+    const transcript = sttJson.transcript || "";
+    console.log("STT response",transcript);
+    // ✅ Insert into DB
     const { data: insertData, error: dbError } = await supabase
       .from("podcast_episodes")
       .insert([
@@ -105,6 +333,7 @@ app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req
           podcast_id: podcastId,
           title,
           audio_url: publicUrl,
+          transcript,
           created_at: new Date().toISOString(),
         },
       ])
@@ -113,15 +342,17 @@ app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req
 
     if (dbError) throw dbError;
 
-    // Cleanup local file
-    fs.unlinkSync(file.path);
+    // ✅ Cleanup
+    fs.unlinkSync(file.path);       // Original uploaded file
+    fs.unlinkSync(tempWavPath);     // Converted WAV file
 
-    res.json({ message: "Episode uploaded", episode: insertData });
+    res.json({ message: "Episode uploaded with transcript", episode: insertData });
   } catch (err) {
     console.error("Upload failed:", err);
     res.status(500).json({ error: "Upload failed", details: err.message });
   }
 });
+
 
 
 // ─────────────────────────────────────────────
@@ -294,7 +525,7 @@ app.post("/api/mentor-chat", upload.single("audio"), async (req, res) => {
         .save(wavPath);
     });
 
-    const languageCode = "ta-IN";
+    
 
     // 1️⃣ Speech-to-Text (Sarvam)
     const sttForm = new FormData();
