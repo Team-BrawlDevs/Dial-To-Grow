@@ -83,6 +83,8 @@ const MenteeDashboard = () => {
 
 
   return (
+    <div>
+      <button></button>
     <div className="container">
       <h2>Welcome Mentee {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
@@ -107,6 +109,7 @@ const MenteeDashboard = () => {
           <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
         </div>
       )}
+    </div>
     </div>
   );
 };

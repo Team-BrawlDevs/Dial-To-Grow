@@ -644,6 +644,25 @@ app.get("/api/voice-messages/:room", (req, res) => {
   res.json(filtered);
 });
 
+app.get("/api/get-groups", async (req, res) => {
+  const { data, error } = await supabase
+    .from("queries")
+    .select(
+      `
+    id,
+    group_title,
+    language_id,
+    languages (
+      name
+    )
+  `
+    )
+    .not("group_title", "is", null);
+  console.log(data);
+
+  res.json(data);
+});
+
 // ✅ Get accepted mentor for a mentee query
 app.get("/api/assigned-mentor/:menteeId", async (req, res) => {
   const { menteeId } = req.params;

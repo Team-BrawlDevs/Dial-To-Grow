@@ -16,13 +16,19 @@ import AIMentor from "./components/AIMentor.jsx";
 import PodcastUploader from "./components/PodcastUploader.jsx";
 import PodcastList from "./components/PodcastList.jsx";
 import PodcastRecorder from "./components/PodcastRecorder.jsx";
-
+import GroupsView from "./components/GroupsView.jsx";
 
 const VoiceRoomWrapper = () => {
   const { queryId } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  return <VoiceRoom queryId={queryId} senderId={user?.id} sender={user?.name || "Anonymous"} />;
+  return (
+    <VoiceRoom
+      queryId={queryId}
+      senderId={user?.id}
+      sender={user?.name || "Anonymous"}
+    />
+  );
 };
 const App = () => {
   return (
@@ -35,11 +41,14 @@ const App = () => {
           <Route path="/mentee/:id" element={<MenteeDashboard />} />
           <Route path="/mentor/:id" element={<MentorDashboard />} />
           <Route path="/voice-room/:queryId" element={<VoiceRoomWrapper />} />
-          <Route path="/aimentor" element={<AIMentor   />} />
-          <Route path="/mentor/:id/podcast" element={<PodcastList   />} />
-          <Route path="/mentor/:id/podcast/new" element={<PodcastUploader   />} />
-          <Route path="/mentor/:id/podcast/:podcastId/recorder" element={<PodcastRecorder />} />
-
+          <Route path="/aimentor" element={<AIMentor />} />
+          <Route path="/mentor/:id/podcast" element={<PodcastList />} />
+          <Route path="/mentor/:id/podcast/new" element={<PodcastUploader />} />
+          <Route
+            path="/mentor/:id/podcast/:podcastId/recorder"
+            element={<PodcastRecorder />}
+          />
+          <Route path="/groups" element={<GroupsView />} />
         </Routes>
       </AuthProvider>
     </Router>
