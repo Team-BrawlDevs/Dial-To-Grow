@@ -1,45 +1,60 @@
-// VoiceRoom.jsx
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import "./VoiceRoom.css";
 
-const VoiceRoom = ({ roomId, sender }) => {
+const VoiceRoom = ({ sender, queryId, senderId }) => {
   const [recording, setRecording] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [textMessage, setTextMessage] = useState("");
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const fetchMessages = async () => {
-    const res = await axios.get(
-      `http://localhost:5000/api/voice-messages/${roomId}`
-    );
-    setMessages(res.data);
+    try {
+      const res = await axios.get(`http://localhost:5000/api/chat/${queryId}`);
+      setMessages(res.data);
+    } catch (err) {
+      console.error("Failed to fetch chat messages:", err);
+    }
   };
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
 
-    mediaRecorderRef.current.ondataavailable = (e) =>
-      chunksRef.current.push(e.data);
+    recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
 
-    mediaRecorderRef.current.onstop = async () => {
+    recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       chunksRef.current = [];
 
       const formData = new FormData();
       formData.append("audio", blob, `${Date.now()}.webm`);
-      formData.append("sender", sender);
-      formData.append("room", roomId);
+      formData.append("sender_id", senderId);
+      formData.append("query_id", queryId);
+      formData.append("message", "[voice]");
 
-      await axios.post("http://localhost:5000/api/voice-upload", formData);
-      fetchMessages();
+      try {
+        await axios.post("http://localhost:5000/api/chat", formData);
+        fetchMessages();
+      } catch (err) {
+        console.error("Failed to send voice message:", err);
+      }
     };
 
-    mediaRecorderRef.current.start();
+    recorder.start();
     setRecording(true);
   };
 
@@ -48,27 +63,69 @@ const VoiceRoom = ({ roomId, sender }) => {
     setRecording(false);
   };
 
-  return (
-    <div className="voice-room">
-      <h2>Voice Room: {roomId}</h2>
+  const sendTextMessage = async () => {
+    if (!textMessage.trim()) return;
+    try {
+      await axios.post("http://localhost:5000/api/chat", {
+        message: textMessage,
+        sender_id: senderId,
+        query_id: queryId,
+      });
+      setTextMessage("");
+      fetchMessages();
+    } catch (err) {
+      console.error("Failed to send text message:", err);
+    }
+  };
 
-      <div>
-        {recording ? (
-          <button onClick={stopRecording}>⏹️ Stop Recording</button>
-        ) : (
-          <button onClick={startRecording}>🎙️ Start Recording</button>
-        )}
+  return (
+    <div className="voice-room-container">
+      <div className="header">
+        <h2>💬 Voice Chat: {queryId}</h2>
       </div>
 
-      <h3>Messages</h3>
-      <ul>
+      <div className="message-list">
         {messages.map((msg, idx) => (
-          <li key={idx}>
-            <strong>{msg.sender}</strong>:{" "}
-            <audio controls src={`http://localhost:5000${msg.url}`} />
-          </li>
+          <div
+            key={idx}
+            className={`message-bubble ${
+              msg.sender_id === senderId ? "own" : ""
+            }`}
+          >
+            <div className="sender">
+              {msg.sender_id === senderId ? "You" : "Mentor"}
+            </div>
+            {msg.audio_url ? (
+              <audio controls src={`http://localhost:5000${msg.audio_url}`} />
+            ) : (
+              <div className="text-message">{msg.message}</div>
+            )}
+          </div>
         ))}
-      </ul>
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="chat-controls">
+        <input
+          type="text"
+          value={textMessage}
+          onChange={(e) => setTextMessage(e.target.value)}
+          placeholder="Type your message..."
+        />
+        <button onClick={sendTextMessage}>Send</button>
+      </div>
+
+      <div className="recording-button">
+        {recording ? (
+          <button onClick={stopRecording} className="stop-button">
+            ⏹️ Stop Recording
+          </button>
+        ) : (
+          <button onClick={startRecording} className="start-button">
+            🎙️ Record Voice
+          </button>
+        )}
+      </div>
     </div>
   );
 };

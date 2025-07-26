@@ -14,10 +14,10 @@ import { AuthProvider } from "./auth.jsx";
 import VoiceRoom from "./components/VoiceRoom.jsx";
 
 const VoiceRoomWrapper = () => {
-  const { roomId } = useParams();
+  const { queryId } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  return <VoiceRoom roomId={roomId} sender={user?.name || "Anonymous"} />;
+  return <VoiceRoom queryId={queryId} senderId={user?.id} sender={user?.name || "Anonymous"} />;
 };
 const App = () => {
   return (
@@ -29,7 +29,7 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/mentee" element={<MenteeDashboard />} />
           <Route path="/mentor" element={<MentorDashboard />} />
-          <Route path="/voice-room/:roomId" element={<VoiceRoomWrapper />} />
+          <Route path="/voice-room/:queryId" element={<VoiceRoomWrapper />} />
         </Routes>
       </AuthProvider>
     </Router>
