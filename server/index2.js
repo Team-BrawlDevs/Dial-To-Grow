@@ -35,6 +35,20 @@ const supabase = createClient(
 );
 let messages = [];
 const languageCode = "ta-IN";
+// Example GET /api/user/:id/languages
+app.get("/api/user/:id/languages", async (req, res) => {
+  const userId = req.params.id;
+  const { data, error } = await supabase
+    .from("user_languages")
+    .select("languages(id, name)")
+    .eq("user_id", userId);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const languages = data.map((l) => l.languages);
+  res.json({ languages });
+});
+
 //play epi in mentee lang
 
 
@@ -284,6 +298,50 @@ app.post("/api/podcasts/:podcastId/episodes", upload.single("audio"), async (req
         .on("error", reject)
         .save(tempWavPath);
     });
+     const { data: podcastData, error: podcastError } = await supabase
+  .from("podcasts")
+  .select("original_language_id")
+  .eq("id", podcastId)
+  .single();
+
+if (podcastError || !podcastData?.original_language_id) {
+  throw new Error("Failed to fetch podcast or missing original_language_id");
+}
+
+// Fetch the language name from languages table
+const { data: langData, error: langError } = await supabase
+  .from("languages")
+  .select("name")
+  .eq("id", podcastData.original_language_id)
+  .single();
+
+if (langError || !langData?.name) {
+  throw new Error("Failed to fetch language name");
+}
+
+// Manually map language name to language code
+const languageNameToCode = {
+  English: "en-IN",
+  Tamil: "ta-IN",
+  Hindi: "hi-IN",
+  Telugu: "te-IN",
+  Kannada: "kn-IN",
+  Malayalam: "ml-IN",
+  Bengali: "bn-IN",
+  Marathi: "mr-IN",
+  Gujarati: "gu-IN",
+  Urdu: "ur-IN",
+  Punjabi: "pa-IN"
+};
+
+const languageCode = languageNameToCode[langData.name];
+
+if (!languageCode) {
+  throw new Error(`No mapping found for language: ${langData.name}`);
+}
+
+console.log("Mapped language name", langData.name, "to code", languageCode);
+
 
     const fileExt = path.extname(file.originalname) || ".webm";
     const storagePath = `episodes/${Date.now()}${fileExt}`;

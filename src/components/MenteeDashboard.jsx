@@ -2,10 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import VoiceRoom from "./VoiceRoom"; // import the component
-import { useNavigate } from "react-router-dom";
 
 const MenteeDashboard = () => {
-  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);

@@ -1,22 +1,38 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
+
 const PodcastUploader = () => {
   const [podcast, setPodcast] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [careerPath, setCareerPath] = useState("");
   const [languageId, setLanguageId] = useState("");
+  const [languages, setLanguages] = useState([]);
   const [episodeTitle, setEpisodeTitle] = useState("");
   const [recording, setRecording] = useState(false);
   const [episodes, setEpisodes] = useState([]);
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const { id } = useParams()
-  const navigate=useNavigate();
+  const { id } = useParams(); // mentor_id
+  const navigate = useNavigate();
+
+  // 🔁 Fetch languages for the mentor (user)
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/user/${id}/languages`);
+        setLanguages(res.data.languages);
+      } catch (err) {
+        console.error("Error fetching languages", err);
+      }
+    };
+
+    fetchLanguages();
+  }, [id]);
 
   const createPodcast = async () => {
-    
     const res = await axios.post("http://localhost:5000/api/podcasts", {
       mentor_id: id,
       title,
@@ -24,6 +40,7 @@ const PodcastUploader = () => {
       career_path: careerPath,
       original_language_id: languageId || null,
     });
+
     setPodcast(res.data.podcast);
     alert("Podcast created!");
     navigate(`/mentor/${id}/podcast`);
@@ -62,18 +79,29 @@ const PodcastUploader = () => {
   };
 
   return (
-  <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <div>
-        <h2>Create Podcast</h2>
-        <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} /><br />
-        <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} /><br />
-        <input placeholder="Career Path" value={careerPath} onChange={e => setCareerPath(e.target.value)} /><br />
-        <input placeholder="Language ID" value={languageId} onChange={e => setLanguageId(e.target.value)} /><br />
-        <button onClick={createPodcast}>Create</button>
-      </div>
-  </div>
-);
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      <h2>Create Podcast</h2>
+      <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} /><br />
+      <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} /><br />
+      <input placeholder="Career Path" value={careerPath} onChange={e => setCareerPath(e.target.value)} /><br />
 
+      {/* 🔽 Language dropdown */}
+      <select
+        value={languageId}
+        onChange={(e) => setLanguageId(e.target.value)}
+        style={{ marginBottom: "10px" }}
+      >
+        <option value="">Select Language</option>
+        {languages.map((lang) => (
+          <option key={lang.id} value={lang.id}>
+            {lang.name}
+          </option>
+        ))}
+      </select><br />
+
+      <button onClick={createPodcast}>Create</button>
+    </div>
+  );
 };
 
 export default PodcastUploader;
