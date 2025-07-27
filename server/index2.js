@@ -45,25 +45,19 @@ app.get("/api/podcast-episodes/:podcastId", async (req, res) => {
 
     console.log(`📌 Podcast ID: ${podcastId}`);
     console.log(`👤 Mentee ID: ${menteeId}`);
-    console.log(`📥 Fetching episodes for podcast ID...`);
 
+    // 1️⃣ Fetch all episodes for the podcast
     const { data: episodes, error: episodeError } = await supabase
       .from("podcast_episodes")
       .select("*")
       .eq("podcast_id", podcastId);
 
-    if (episodeError) {
-      console.error("❌ Error fetching episodes:", episodeError.message);
-      return res.status(500).json({ error: "Error fetching episodes" });
+    if (episodeError || !episodes.length) {
+      console.error("❌ Error fetching episodes or no episodes found.");
+      return res.status(500).json({ error: "No episodes found" });
     }
 
-    console.log(`✅ Episodes fetched: ${episodes.length}`);
-
-    const episode = episodes[0];
-    if (!episode) return res.status(404).json({ error: "Episode not found" });
-
-    console.log("📥 Fetching mentee language preference...");
-
+    // 2️⃣ Get mentee's language preference
     const { data: userLangData, error: langError } = await supabase
       .from("user_languages")
       .select("languages(name)")
@@ -90,31 +84,9 @@ app.get("/api/podcast-episodes/:podcastId", async (req, res) => {
       oriya: "or-IN",
       english: "en-IN"
     };
-
     const targetLangCode = languageMap[languageName] || "en-IN";
-    console.log(`🌐 Target language code resolved: ${targetLangCode}`);
+    console.log(`🌐 Target language code: ${targetLangCode}`);
 
-    console.log("🔁 Translating episode content...");
-
-    const translationResponse = await axios.post(
-      "https://api.sarvam.ai/translate",
-      {
-        input: episode.transcript,
-        source_language_code: "auto",
-        target_language_code: targetLangCode,
-      },
-      {
-        headers: {
-          "api-subscription-key": process.env.SARVAM_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const translatedText = translationResponse.data.translated_text;
-    console.log(`✅ Translated Text: ${translatedText}`);
-
-     console.log("🎤 Performing TTS with chunking...");
     const CHUNK_SIZE = 300;
     const splitText = (str) => {
       const chunks = [];
@@ -129,78 +101,103 @@ app.get("/api/podcast-episodes/:podcastId", async (req, res) => {
       return chunks;
     };
 
-    const chunks = splitText(translatedText);
-    const audioPaths = [];
+    const results = [];
 
-    for (let i = 0; i < chunks.length; i++) {
-      const ttsRes = await fetch("https://api.sarvam.ai/text-to-speech", {
-        method: "POST",
-        headers: {
-          "api-subscription-key": process.env.SARVAM_API_KEY,
-          "Content-Type": "application/json",
+    // 🔁 Process each episode
+    for (const episode of episodes) {
+      console.log(`🔁 Processing episode: ${episode.title}`);
+
+      // 3️⃣ Translate the transcript
+      const translationResponse = await axios.post(
+        "https://api.sarvam.ai/translate",
+        {
+          input: episode.transcript,
+          source_language_code: "auto",
+          target_language_code: targetLangCode,
         },
-        body: JSON.stringify({
-          text: chunks[i],
-          language: targetLangCode,
-        }),
+        {
+          headers: {
+            "api-subscription-key": process.env.SARVAM_API_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const translatedText = translationResponse.data.translated_text;
+      const chunks = splitText(translatedText);
+      const audioPaths = [];
+
+      // 4️⃣ TTS each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        const ttsRes = await fetch("https://api.sarvam.ai/text-to-speech", {
+          method: "POST",
+          headers: {
+            "api-subscription-key": process.env.SARVAM_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: chunks[i],
+            language: targetLangCode,
+          }),
+        });
+
+        const ttsJson = await ttsRes.json();
+        const base64Audio = ttsJson?.audios?.[0];
+        if (!base64Audio) continue;
+
+        const buffer = Buffer.from(base64Audio, "base64");
+        const audioDir = path.join(__dirname, "uploads");
+        fs.mkdirSync(audioDir, { recursive: true });
+
+        const audioPath = path.join(audioDir, `chunk_${episode.id}_${i}_${Date.now()}.wav`);
+        fs.writeFileSync(audioPath, buffer);
+        audioPaths.push(audioPath);
+      }
+
+      // 5️⃣ Merge audio chunks into one file
+      const concatListPath = path.join(__dirname, "uploads", `list_${episode.id}_${Date.now()}.txt`);
+      const concatListContent = audioPaths.map((p) => `file '${p}'`).join("\n");
+      fs.writeFileSync(concatListPath, concatListContent);
+
+      const finalFilename = `bot_${episode.id}_${Date.now()}.wav`;
+      const finalPath = path.join(__dirname, "uploads", finalFilename);
+
+      await new Promise((resolve, reject) => {
+        ffmpeg()
+          .input(concatListPath)
+          .inputOptions("-f", "concat", "-safe", "0")
+          .outputOptions("-c", "copy")
+          .on("end", resolve)
+          .on("error", reject)
+          .save(finalPath);
       });
 
-      const ttsJson = await ttsRes.json();
-      const base64Audio = ttsJson?.audios?.[0];
-      if (!base64Audio) continue;
+      // Cleanup temp chunks after 15s
+      setTimeout(() => {
+        for (const file of [...audioPaths, concatListPath]) {
+          fs.unlink(file, () => {});
+        }
+      }, 15000);
 
-      const buffer = Buffer.from(base64Audio, "base64");
-      const audioDir = path.join(__dirname, "uploads");
-      fs.mkdirSync(audioDir, { recursive: true });
+      // 6️⃣ Add result
+      results.push({
+        id: episode.id,
+        title: episode.title,
+        audio_url: `http://localhost:5000/uploads/${finalFilename}`,
+      });
 
-      const audioPath = path.join(audioDir, `chunk_${i}_${Date.now()}.wav`);
-      fs.writeFileSync(audioPath, buffer);
-      audioPaths.push(audioPath);
+      console.log(`✅ Processed: ${episode.title}`);
     }
 
-    if (audioPaths.length === 0) {
-      throw new Error("No audio chunks generated.");
-    }
-
-    // 5️⃣ Merge audio chunks with FFmpeg
-    const concatListPath = path.join(__dirname, "uploads", `list_${Date.now()}.txt`);
-    const concatListContent = audioPaths.map((p) => `file '${p}'`).join("\n");
-    fs.writeFileSync(concatListPath, concatListContent);
-
-    const finalFilename = `bot_${Date.now()}.wav`;
-    const finalPath = path.join(__dirname, "uploads", finalFilename);
-
-    await new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(concatListPath)
-        .inputOptions("-f", "concat", "-safe", "0")
-        .outputOptions("-c", "copy")
-        .on("end", resolve)
-        .on("error", reject)
-        .save(finalPath);
-    });
-
-    // 6️⃣ Cleanup temp chunks after 15s
-    setTimeout(() => {
-      for (const file of [...audioPaths, concatListPath]) {
-        fs.unlink(file, () => {});
-      }
-    }, 15000);
-    console.log("File name: ",finalFilename);
-    // 7️⃣ Send response
-    res.json([
-  {
-    id: episode.id,
-    title: episode.title,
-    audio_url: `http://localhost:5000/uploads/${finalFilename}`,
-  }
-]);
+    // 7️⃣ Send all episodes
+    res.json(results);
 
   } catch (err) {
     console.error("💥 Unexpected error:", err);
     res.status(500).json({ error: err.message || "Something went wrong." });
   }
 });
+
 
 
 //Explore courses
