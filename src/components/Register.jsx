@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
 
 const Register = () => {
+   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -56,6 +58,7 @@ const Register = () => {
       if (res.ok) {
         alert("Registration successful!");
         console.log(result);
+        navigate("/"); 
       } else {
         alert("Registration failed!");
         console.error(result.error);
@@ -67,26 +70,36 @@ const Register = () => {
   };
 
   const isMentor = formData.role === "mentor";
-  const isMentee = formData.role === "mentee";
+
+  const inputStyle = {
+    width: "300px",
+    padding: "8px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+  };
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div style={{ padding: "2rem", justifyContent:"center", alignItems:"center", display:"flex" , flexDirection:"column"}}>
       <h2>Register</h2>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <input type="text" name="name" placeholder="Name" required onChange={handleChange} />
-        <input type="email" name="email" placeholder="Email" required onChange={handleChange} />
-        <input type="password" name="password" placeholder="Password" required onChange={handleChange} />
-        <input type="number" name="age" placeholder="Age" required onChange={handleChange} min={10} max={100} />
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: "320px" }}
+      >
+        <input style={inputStyle} type="text" name="name" placeholder="Name" required onChange={handleChange} />
+        <input style={inputStyle} type="email" name="email" placeholder="Email" required onChange={handleChange} />
+        <input style={inputStyle} type="password" name="password" placeholder="Password" required onChange={handleChange} />
+        <input style={inputStyle} type="number" name="age" placeholder="Age" required onChange={handleChange} min={10} max={100} />
 
-        <select name="role" onChange={handleChange} value={formData.role}>
+        <select name="role" onChange={handleChange} value={formData.role} style={inputStyle}>
           <option value="">--Select Role--</option>
           <option value="mentor">Mentor</option>
           <option value="mentee">Mentee</option>
         </select>
 
-        <input type="text" name="region" placeholder="Region" required onChange={handleChange} />
+        <input style={inputStyle} type="text" name="region" placeholder="Region" required onChange={handleChange} />
 
         <input
+          style={inputStyle}
           type="text"
           name="career"
           placeholder={isMentor ? "Your Career" : "Line of Interest"}
@@ -96,18 +109,33 @@ const Register = () => {
 
         {isMentor && (
           <>
-            <input type="text" name="expertise" placeholder="Expertise (eg. Math, Science)" onChange={handleChange} />
             <input
+              style={inputStyle}
+              type="text"
+              name="expertise"
+              placeholder="Expertise (eg. Math, Science)"
+              onChange={handleChange}
+            />
+            <input
+              style={inputStyle}
               type="number"
               name="experience_years"
               placeholder="Years of Experience"
               min="0"
               onChange={handleChange}
             />
-            <textarea name="bio" placeholder="Short Bio" onChange={handleChange} />
+            <textarea
+              name="bio"
+              placeholder="Short Bio"
+              onChange={handleChange}
+              style={{ ...inputStyle, height: "80px" }}
+            />
+            <div style={{display:"flex", alignItems:"center"}}>
             <label>
-              <input type="checkbox" name="available" onChange={handleChange} /> Voice Call Available?
+             Voice Call Available? 
             </label>
+            <input type="checkbox" name="voice_call" onChange={handleChange} style={{marginLeft:"10px", width:"10px"}}/> 
+            </div>
           </>
         )}
 
@@ -119,7 +147,7 @@ const Register = () => {
             value={formData.languages}
             onChange={handleChange}
             size="5"
-            style={{ width: "200px" }}
+            style={{ ...inputStyle, height: "120px" }}
           >
             {languageOptions.map((lang) => (
               <option key={lang.id} value={lang.id}>
@@ -129,7 +157,9 @@ const Register = () => {
           </select>
         </label>
 
-        <button type="submit">Register</button>
+        <button type="submit" style={{ ...inputStyle, cursor: "pointer", backgroundColor: "#007bff", color: "white" }}>
+          Register
+        </button>
       </form>
     </div>
   );
