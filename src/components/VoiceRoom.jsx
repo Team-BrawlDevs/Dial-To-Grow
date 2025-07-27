@@ -30,6 +30,7 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
     console.log("curr isd:",currentUserId);
   }
 }, []);
+
   useEffect(() => {
   const fetchUserRoles = async () => {
     try {
@@ -45,6 +46,8 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
   };
   fetchUserRoles();
 }, [queryId]);
+console.log("cuur user:",currentUserId);
+console.log("sender Id",mentorId)
 useEffect(() => {
   if (mentorId || menteeId) {
     console.log("Updated mentorId:", mentorId);
