@@ -8,7 +8,6 @@ const PodcastEpisodes = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("userId:", userId, "podcastId:", podcastId);
     axios
       .get(`http://localhost:5000/api/podcast-episodes/${podcastId}?mentee_id=${userId}`)
       .then((res) => {
@@ -22,25 +21,33 @@ const PodcastEpisodes = () => {
   }, [userId, podcastId]);
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "15px" }}>Episodes</h2>
+    <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
+      <h2 style={{ fontSize: "24px", fontWeight: "600", marginBottom: "20px" }}>
+        🎧 Podcast Episodes
+      </h2>
       {loading ? (
         <p>Loading...</p>
-      ) : (
+      ) : episodes.length > 0 ? (
         episodes.map((ep) => (
           <div
             key={ep.id}
             style={{
-              marginBottom: "15px",
-              padding: "15px",
-              border: "1px solid #ccc",
-              borderRadius: "8px",
+              marginBottom: "20px",
+              padding: "20px",
+              border: "1px solid #ddd",
+              borderRadius: "12px",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
+              backgroundColor: "#f9f9f9",
             }}
           >
-            <h3 style={{ fontSize: "18px", marginBottom: "5px" }}>{ep.title}</h3>
-            <audio controls src={ep.audio_url}></audio>
+            <h3 style={{ fontSize: "20px", fontWeight: "500", marginBottom: "10px" }}>
+              {ep.title}
+            </h3>
+            <audio controls src={ep.audio_url} style={{ width: "100%" }} />
           </div>
         ))
+      ) : (
+        <p>No episodes available.</p>
       )}
     </div>
   );

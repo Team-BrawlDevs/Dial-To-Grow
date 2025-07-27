@@ -70,16 +70,20 @@ const MentorDashboard = () => {
             <p>
               <strong>Query:</strong> {r.transcription}
             </p>
+            <div style={{display:"flex", justifyContent:"center", gap:"30px"}}>
             <button
               onClick={() => handleResponse(r.id, r.menteeName, "accept")}
+              style={{marginTop:"5px", backgroundColor:"green", width:"100px"}}
             >
               Accept
             </button>
             <button
+            style={{marginTop:"5px", backgroundColor:"orangered", width:"100px"}}
               onClick={() => handleResponse(r.id, r.menteeName, "reject")}
             >
               Reject
             </button>
+            </div>
           </div>
         ))
       )}

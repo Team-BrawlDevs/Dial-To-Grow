@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import VoiceRoom from "./VoiceRoom"; // import the component
+import VoiceRoom from "./VoiceRoom";
 import { FaDiscourse } from "react-icons/fa";
 import { BsRecordCircle } from "react-icons/bs";
 import { RiCommunityFill } from "react-icons/ri";
@@ -15,10 +15,9 @@ const MenteeDashboard = () => {
   const [mentorName, setMentorName] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunks = useRef([]);
-  const navigate=useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch assigned mentor and room ID
     const fetchMentor = async () => {
       try {
         const res = await axios.get(
@@ -32,7 +31,6 @@ const MenteeDashboard = () => {
         console.error("Error fetching mentor:", err);
       }
     };
-
     fetchMentor();
   }, [user.id]);
 
@@ -52,93 +50,141 @@ const MenteeDashboard = () => {
   };
 
   const handleRecordingStop = async () => {
-  const blob = new Blob(chunks.current, { type: "audio/webm" });
+    const blob = new Blob(chunks.current, { type: "audio/webm" });
+    const file = new File([blob], "recording.webm", { type: "audio/webm" });
+    const formData = new FormData();
+    formData.append("audio", file);
+    formData.append("mentee_id", user.id);
+    formData.append("language_id", 1);
 
-  const file = new File([blob], "recording.webm", { type: "audio/webm" });
-  const formData = new FormData();
-  formData.append("audio", file);
-  formData.append("mentee_id", user.id);
-  formData.append("language_id", 1);
+    setStatus("Uploading...");
 
-  setStatus("Uploading...");
+    try {
+      const res = await axios.post("http://localhost:5000/api/query", formData);
+      setAudioURL(res.data.audio_url);
+      setStatus(`Success! Career: ${res.data.career}`);
 
-  try {
-    const res = await axios.post("http://localhost:5000/api/query", formData);
-    setAudioURL(res.data.audio_url);
-    setStatus(`Success! Career: ${res.data.career}`);
-    console.log("Sending to queryId:", queryId);
-
-    // ✅ Also upload to mentor via voice-upload API
-    if (queryId) {
-      const voiceForm = new FormData();
-      voiceForm.append("audio", blob, `${Date.now()}.webm`);
-      voiceForm.append("sender", user.name);
-      voiceForm.append("room", queryId);
-
-      await axios.post("http://localhost:5000/api/voice-upload", voiceForm);
+      if (queryId) {
+        const voiceForm = new FormData();
+        voiceForm.append("audio", blob, `${Date.now()}.webm`);
+        voiceForm.append("sender", user.name);
+        voiceForm.append("room", queryId);
+        await axios.post("http://localhost:5000/api/voice-upload", voiceForm);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus("Error uploading or transcribing");
     }
 
-  } catch (err) {
-    console.error(err);
-    setStatus("Error uploading or transcribing");
-  }
+    chunks.current = [];
+  };
 
-  chunks.current = [];
-};
+  // Reusable style
+  const buttonStyle = {
+    width: "200px",
+    borderRadius: "20px",
+    height: "50px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  };
 
+  const hoverStyle = {
+    backgroundColor: "#f07c00",
+    color: "#fff",
+  };
 
   return (
     <div style={{ position: "relative" }}>
-  {/* Top-right button */}
-  <button 
-  onClick={() => navigate("/groups")}
-  style={{
-    position: "absolute",
-    top: "5px",
-    right: "60px",
-    width:"100px",
-    padding: "8px 12px",
-    backgroundColor: "#00c8ffff",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer"
-    
-  }}
-  >
-   <RiCommunityFill style={{marginRight:"7px"}} />
- Join Community
-  </button>
-    <div className="container">
-      <h2>Welcome Mentee {user?.name || "User"}</h2>
-      <p>This is your dashboard.</p>
-      <div style={{marginTop:"20px", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center"
-      }}>
-      <button onClick={() => navigate(`/explore/${user.id}`)} style={{ width:"200px", borderRadius:"20px", height:"50px"}}>
-  <FaDiscourse /> Explore Courses
-</button>
+      {/* Top-right button */}
+      <button
+        onClick={() => navigate("/groups")}
+        style={{
+          position: "absolute",
+          top: "5px",
+          right: "60px",
+          width: "130px",
+          padding: "8px 12px",
+          backgroundColor: "#00c8ff",
+          color: "white",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          transition: "background-color 0.3s ease",
+        }}
+        onMouseEnter={(e) => (e.target.style.backgroundColor = "#009fd1")}
+        onMouseLeave={(e) => (e.target.style.backgroundColor = "#00c8ff")}
+      >
+        <RiCommunityFill style={{ marginRight: "7px" }} />
+        Join Community
+      </button>
 
-      <div style={{marginTop:"20px"}}>
-       <button onClick={isRecording ? stopRecording : startRecording} style={{backgroundColor:"orange", width:"200px", borderRadius:"20px", height:"50px"}}>
-  {isRecording ? "Stop Recording" : <><BsRecordCircle style={{ marginRight: "6px" }} /> Record Query</>}
-</button>
+      <div className="container">
+        <h2>Welcome Mentee {user?.name || "User"}</h2>
+        <p>This is your dashboard.</p>
+
+        <div
+          style={{
+            marginTop: "20px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "20px",
+          }}
+        >
+          <button
+            onClick={() => navigate(`/explore/${user.id}`)}
+            style={{
+              ...buttonStyle,
+              backgroundColor: "#d3d3d3",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "#999";
+              e.target.style.color = "white";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "#d3d3d3";
+              e.target.style.color = "black";
+            }}
+          >
+            <FaDiscourse /> Explore Courses
+          </button>
+
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            style={{
+              ...buttonStyle,
+              backgroundColor: "orange",
+            }}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = "#e67600")}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = "orange")}
+          >
+            {isRecording ? "Stop Recording" : (
+              <>
+                <BsRecordCircle style={{ marginRight: "6px" }} />
+                Record Query
+              </>
+            )}
+          </button>
+        </div>
+
+        {status && <p style={{ marginTop: "20px", fontWeight: "bold" }}>{status}</p>}
+
+        {audioURL && (
+          <div style={{ marginTop: "15px" }}>
+            <audio controls src={audioURL}></audio>
+          </div>
+        )}
+
+        {queryId && (
+          <div style={{ marginTop: "30px" }}>
+            <h3>Chat with {mentorName}</h3>
+            <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
+          </div>
+        )}
       </div>
-</div>
-      {status && <p>{status}</p>}
-      {audioURL && (
-        <div>
-          <audio controls src={audioURL}></audio>
-        </div>
-      )}
-
-      {/* If mentor is assigned, render the voice chat */}
-      {queryId && (
-        <div>
-          <h3>Chat with {mentorName}</h3>
-          <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
-        </div>
-      )}
-    </div>
     </div>
   );
 };

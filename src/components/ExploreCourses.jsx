@@ -4,14 +4,14 @@ import { useNavigate, useParams } from "react-router-dom";
 
 const ExploreCourses = () => {
   const [courses, setCourses] = useState([]);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
   const [loading, setLoading] = useState(true);
   const { userId } = useParams();
-  const navigate=useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     axios.get(`http://localhost:5000/api/courses/${userId}`)
       .then(res => {
-        console.log("courses",res.data);
         setCourses(res.data);
         setLoading(false);
       })
@@ -49,13 +49,14 @@ const ExploreCourses = () => {
     padding: 0
   };
 
-  const cardStyle = {
+  const cardBaseStyle = {
     backgroundColor: "white",
     border: "1px solid #ddd",
     padding: "18px",
     marginBottom: "16px",
     borderRadius: "8px",
-    transition: "box-shadow 0.3s ease"
+    transition: "all 0.3s ease",
+    cursor: "pointer"
   };
 
   const titleStyle = {
@@ -79,12 +80,29 @@ const ExploreCourses = () => {
         <p style={messageStyle}>No matching podcasts found.</p>
       ) : (
         <ul style={listStyle}>
-          {courses.map((podcast, idx) => (
-            <li key={idx} style={cardStyle} onClick={() => navigate(`/podcast/${userId}/${podcast.id}`)}>
-              <h3 style={titleStyle}>{podcast.title}</h3>
-              <p style={descriptionStyle}>{podcast.description}</p>
-            </li>
-          ))}
+          {courses.map((podcast, idx) => {
+            const isHovered = hoveredIndex === idx;
+            const cardStyle = {
+              ...cardBaseStyle,
+              boxShadow: isHovered
+                ? "0 6px 15px rgba(0, 0, 0, 0.1)"
+                : "0 2px 6px rgba(0, 0, 0, 0.05)",
+              transform: isHovered ? "scale(1.02)" : "scale(1)"
+            };
+
+            return (
+              <li
+                key={idx}
+                style={cardStyle}
+                onMouseEnter={() => setHoveredIndex(idx)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                onClick={() => navigate(`/podcast/${userId}/${podcast.id}`)}
+              >
+                <h3 style={titleStyle}>{podcast.title}</h3>
+                <p style={descriptionStyle}>{podcast.description}</p>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

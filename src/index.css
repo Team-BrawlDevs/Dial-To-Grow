@@ -98,3 +98,79 @@ button {
 .login-container a:hover {
   color: #1e6fd9;
 }
+
+
+.podcast-recorder {
+  max-width: 600px;
+  margin: auto;
+  padding: 30px;
+  background-color: #fdfdfd;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.record-section {
+  margin-top: 25px;
+  padding: 15px;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  background-color: #f8f8f8;
+}
+
+.episode-title-input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.record-button,
+.upload-button {
+  padding: 10px 18px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.record-button.start {
+  background-color: #2e8b57;
+  color: white;
+}
+
+.record-button.stop {
+  background-color: #dc143c;
+  color: white;
+}
+
+.upload-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.upload-button:disabled {
+  background-color: #b0c4de;
+  cursor: not-allowed;
+}
+
+.preview-section {
+  margin-top: 15px;
+}
+
+.episode-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.episode-item {
+  margin-bottom: 20px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f2f2f2;
+}

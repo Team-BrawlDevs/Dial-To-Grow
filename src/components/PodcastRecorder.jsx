@@ -119,54 +119,64 @@ const PodcastRecorder = () => {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>🎙️ {podcast.title}</h2>
-      <p>{podcast.description}</p>
+    <div className="podcast-recorder">
+  <h2>🎙️ {podcast.title}</h2>
+  <p>{podcast.description}</p>
 
-      <div style={{ marginBottom: "20px" }}>
-        <h3>➕ Record New Episode</h3>
-        <input
-          type="text"
-          placeholder="Episode Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <br />
-        <button onClick={recording ? stopRecording : startRecording}>
-          {recording ? "⏹️ Stop Recording" : "🎤 Start Recording"}
-        </button>
+  <div className="record-section">
+    <h3>➕ Record New Episode</h3>
+    <input
+      className="episode-title-input"
+      type="text"
+      placeholder="Episode Title"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      style={{width:"550px"}}
+    />
+    <br />
+    <button
+      className={`record-button ${recording ? "stop" : "start"}`}
+      onClick={recording ? stopRecording : startRecording}
+    >
+      {recording ? "⏹️ Stop Recording" : "🎤 Start Recording"}
+    </button>
 
-        {audioUrl && (
-          <div>
-            <p>✅ Recorded Preview:</p>
-            <audio ref={audioRef} controls src={audioUrl} />
-          </div>
-        )}
-
-        <button onClick={handleUpload} disabled={loading || !audioBlob}>
-          {loading ? "Uploading..." : "⬆️ Upload Episode"}
-        </button>
+    {audioUrl && (
+      <div className="preview-section">
+        <p>✅ Recorded Preview:</p>
+        <audio ref={audioRef} controls src={audioUrl} />
       </div>
+    )}
 
-      <h3>📻 Existing Episodes</h3>
-      {episodes.length === 0 ? (
-        <p>No episodes yet.</p>
-      ) : (
-        <ul>
-          {episodes.map((ep) => (
-            <li key={ep.id} style={{ marginBottom: "15px" }}>
-              <strong>{ep.title}</strong>
-              <br />
-              <audio controls src={ep.audio_url} />
-              <br />
-              <small>
-                Uploaded on: {new Date(ep.created_at).toLocaleString()}
-              </small>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <button
+      className="upload-button"
+      onClick={handleUpload}
+      disabled={loading || !audioBlob}
+    >
+      {loading ? "Uploading..." : "⬆️ Upload Episode"}
+    </button>
+  </div>
+
+  <h3>📻 Existing Episodes</h3>
+  {episodes.length === 0 ? (
+    <p>No episodes yet.</p>
+  ) : (
+    <ul className="episode-list">
+      {episodes.map((ep) => (
+        <li key={ep.id} className="episode-item">
+          <strong>{ep.title}</strong>
+          <br />
+          <audio controls src={ep.audio_url} />
+          <br />
+          <small>
+            Uploaded on: {new Date(ep.created_at).toLocaleString()}
+          </small>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
   );
 };
 
