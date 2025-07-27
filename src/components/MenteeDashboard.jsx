@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import VoiceRoom from "./VoiceRoom"; // import the component
+import { FaDiscourse } from "react-icons/fa";
+import { BsRecordCircle } from "react-icons/bs";
 
 const MenteeDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -108,16 +110,18 @@ const MenteeDashboard = () => {
     <div className="container">
       <h2>Welcome Mentee {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
-      <button onClick={() => navigate(`/explore/${user.id}`)}>
-  Explore Courses
+      <div style={{marginTop:"20px", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center"
+      }}>
+      <button onClick={() => navigate(`/explore/${user.id}`)} style={{ width:"200px", borderRadius:"20px", height:"50px"}}>
+  <FaDiscourse /> Explore Courses
 </button>
 
-      <div>
-        <button onClick={isRecording ? stopRecording : startRecording}>
-          {isRecording ? "Stop Recording" : "Record Query"}
-        </button>
+      <div style={{marginTop:"20px"}}>
+       <button onClick={isRecording ? stopRecording : startRecording} style={{backgroundColor:"orange", width:"200px", borderRadius:"20px", height:"50px"}}>
+  {isRecording ? "Stop Recording" : <><BsRecordCircle style={{ marginRight: "6px" }} /> Record Query</>}
+</button>
       </div>
-
+</div>
       {status && <p>{status}</p>}
       {audioURL && (
         <div>
