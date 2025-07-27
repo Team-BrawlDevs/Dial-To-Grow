@@ -65,6 +65,7 @@ export default function Login() {
           name="email"
           value={user.email}
           onChange={handleChange}
+          style={{width:"370px"}}
           required
         />
 
@@ -74,6 +75,7 @@ export default function Login() {
           name="password"
           ref={passwordRef}
           value={user.password}
+          style={{width:"370px"}}
           onChange={handleChange}
           required
         />
