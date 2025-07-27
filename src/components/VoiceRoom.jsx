@@ -48,6 +48,7 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
 }, [queryId]);
 console.log("cuur user:",currentUserId);
 console.log("sender Id",mentorId)
+console.log("bool: ",currentUserId===mentorId);
 useEffect(() => {
   if (mentorId || menteeId) {
     console.log("Updated mentorId:", mentorId);
@@ -107,7 +108,8 @@ useEffect(() => {
         await axios.post("http://localhost:5000/api/chat", uploadForm);
         fetchMessages();
         // 🎯 If the voice was sent by mentee, trigger AI coach
-if (senderId === menteeId) {
+if (Number(senderId) === Number(menteeId)) {
+  console.log("✅ Mentee message detected, triggering AI suggestion...");
   const aiForm = new FormData();
   aiForm.append("audio", blob);
   aiForm.append("languageCode", "en-IN"); // Or as needed
@@ -117,7 +119,6 @@ if (senderId === menteeId) {
     console.log("🧠 AI Mentor Suggestion:", aiRes.data);
     setAiCoachText(aiRes.data.text);
     setAiCoachAudio(`http://localhost:5000${aiRes.data.audio}`);
-    setShowAiPopup(true);
   } catch (err) {
     console.error("❌ AI coach failed:", err);
   }
@@ -130,7 +131,8 @@ if (senderId === menteeId) {
     recorder.start();
     setRecording(true);
   };
-
+  console.log("text:",aiCoachText);
+  console.log("Audio:",aiCoachAudio);
   const stopRecording = () => {
     mediaRecorderRef.current.stop();
     setRecording(false);
@@ -256,20 +258,34 @@ if (senderId === menteeId) {
     </div>
   </div>
 )}
-{currentUserId === mentorId && aiCoachText && (
-  <button
-    className="ai-recommendation-btn"
-    onClick={() => setShowAiPopup(true)}
-  >
-    🤖 AI Recommendation
-  </button>
+{/* ✅ Only show this to Mentor when AI suggestion is ready */}
+{currentUserId === mentorId && aiCoachText && aiCoachAudio && (
+  <div style={{ textAlign: "center", marginTop: "10px" }}>
+    <button
+      className="ai-recommendation-btn"
+      onClick={() => setShowAiPopup(true)}
+      style={{
+        padding: "8px 16px",
+        backgroundColor: "#4444aa",
+        color: "#fff",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer",
+        fontWeight: "bold",
+      }}
+    >
+      🤖 Show AI Recommendation
+    </button>
+  </div>
 )}
-{showAiPopup && (
+
+{/* ✅ Show popup only when button is clicked */}
+{showAiPopup && currentUserId === mentorId && (
   <div className="popup-overlay">
     <div className="popup-warning">
       <h3>🤖 AI Mentor Suggestion</h3>
       <p>{aiCoachText}</p>
-      <audio controls autoPlay src={aiCoachAudio} />
+      <audio controls src={aiCoachAudio} />
       <button onClick={() => setShowAiPopup(false)}>Close</button>
     </div>
   </div>
