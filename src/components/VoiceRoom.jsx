@@ -232,11 +232,10 @@ if (senderId === menteeId) {
               <div className="sender">
                 {msg.sender_id === senderId
                   ? "You"
-                  : "other"
-                  // msg.sender_id === mentorId
-                  // ? "Mentor"
-                  // : "Mentee"
-                  }
+                  : msg.sender_id === mentorId
+                  ? "Mentor"
+                  : "Mentee"
+                  }
               </div>
               {msg.audio_url ? (
                 <audio controls src={`http://localhost:5000${msg.audio_url}`} />
