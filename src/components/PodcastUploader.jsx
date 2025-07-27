@@ -18,7 +18,6 @@ const PodcastUploader = () => {
   const { id } = useParams(); // mentor_id
   const navigate = useNavigate();
 
-  // 🔁 Fetch languages for the mentor (user)
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
@@ -79,29 +78,77 @@ const PodcastUploader = () => {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>Create Podcast</h2>
-      <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} /><br />
-      <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} /><br />
-      <input placeholder="Career Path" value={careerPath} onChange={e => setCareerPath(e.target.value)} /><br />
+    <div style={{
+      padding: "30px",
+      fontFamily: "Arial, sans-serif",
+      maxWidth: "600px",
+      margin: "0 auto",
+      border: "1px solid #ddd",
+      borderRadius: "10px",
+      backgroundColor: "#f9f9f9"
+    }}>
+      <h2 style={{ textAlign: "center" }}>🎙️ Create New Podcast</h2>
 
-      {/* 🔽 Language dropdown */}
+      <input
+        style={inputStyle}
+        placeholder="Title"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+      />
+
+      <input
+        style={inputStyle}
+        placeholder="Description"
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+      />
+
+      <input
+        style={inputStyle}
+        placeholder="Career Path"
+        value={careerPath}
+        onChange={e => setCareerPath(e.target.value)}
+      />
+
       <select
+        style={inputStyle}
         value={languageId}
         onChange={(e) => setLanguageId(e.target.value)}
-        style={{ marginBottom: "10px" }}
       >
-        <option value="">Select Language</option>
+        <option value="">🎧 Select Language</option>
         {languages.map((lang) => (
-          <option key={lang.id} value={lang.id}>
-            {lang.name}
-          </option>
+          <option key={lang.id} value={lang.id}>{lang.name}</option>
         ))}
-      </select><br />
+      </select>
 
-      <button onClick={createPodcast}>Create</button>
+      <button style={buttonStyle} onClick={createPodcast}>
+        ✅ Create Podcast
+      </button>
     </div>
   );
+};
+
+// Styles
+const inputStyle = {
+  width: "100%",
+  padding: "10px",
+  margin: "10px 0",
+  borderRadius: "5px",
+  border: "1px solid #ccc",
+  fontSize: "16px",
+  boxSizing: "border-box"
+};
+
+const buttonStyle = {
+  width: "100%",
+  padding: "12px",
+  backgroundColor: "#007bff",
+  color: "white",
+  border: "none",
+  borderRadius: "5px",
+  fontSize: "16px",
+  cursor: "pointer",
+  marginTop: "10px"
 };
 
 export default PodcastUploader;

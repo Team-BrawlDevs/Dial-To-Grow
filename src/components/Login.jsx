@@ -56,6 +56,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <img src="image.png" alt="" height={100} style={{borderRadius:"10px"}}/>
       <h2>Sign in to your Mentor-Mentee App</h2>
       <form onSubmit={handleLogin}>
         <label>Email:</label>
