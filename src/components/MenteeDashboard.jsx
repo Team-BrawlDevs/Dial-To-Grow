@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import VoiceRoom from "./VoiceRoom"; // import the component
 import { FaDiscourse } from "react-icons/fa";
 import { BsRecordCircle } from "react-icons/bs";
+import { RiCommunityFill } from "react-icons/ri";
 
 const MenteeDashboard = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -97,7 +98,7 @@ const MenteeDashboard = () => {
     right: "60px",
     width:"100px",
     padding: "8px 12px",
-    backgroundColor: "#007bff",
+    backgroundColor: "#00c8ffff",
     color: "white",
     border: "none",
     borderRadius: "5px",
@@ -105,7 +106,8 @@ const MenteeDashboard = () => {
     
   }}
   >
-    Join Community
+   <RiCommunityFill style={{marginRight:"7px"}} />
+ Join Community
   </button>
     <div className="container">
       <h2>Welcome Mentee {user?.name || "User"}</h2>
