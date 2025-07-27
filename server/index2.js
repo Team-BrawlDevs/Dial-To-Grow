@@ -1113,7 +1113,7 @@ app.post("/analyze-audio", upload.single("audio"), async (req, res) => {
     const systemPrompt = {
       role: "system",
       content:
-        "You are a language abuse detector. Given any text, respond ONLY with 'yes' if it contains vulgar, offensive, rude or abusive language. Else respond 'no'. Do not explain anything.",
+        "You are a language abuse detector. Given any text, respond ONLY with 'yes' if it contains vulgar, offensive,demotivating, rude,disrespectful or abusive language. Else respond 'no'. Do not explain anything.",
     };
 
     const groqRes = await groq.chat.completions.create({
@@ -1175,6 +1175,133 @@ app.get("/api/query/:queryId/users", async (req, res) => {
   } catch (err) {
     console.error("❌ Error fetching user roles:", err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/mentor-coach", upload.single("audio"), async (req, res) => {
+  try {
+    const inputPath = req.file.path;
+    const wavPath = `${inputPath}.wav`;
+
+    // 1️⃣ Convert to WAV
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .toFormat("wav")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(wavPath);
+    });
+
+    // 2️⃣ Sarvam STT
+    const sttForm = new FormData();
+    sttForm.append("file", fs.createReadStream(wavPath));
+    sttForm.append("language_code", req.body.languageCode || "en-IN");
+
+    const sttRes = await fetch("https://api.sarvam.ai/speech-to-text", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": process.env.SARVAM_API_KEY,
+        ...sttForm.getHeaders(),
+      },
+      body: sttForm,
+    });
+
+    const sttJson = await sttRes.json();
+    const transcript = sttJson?.transcript?.trim() || "";
+
+    console.log("📝 Transcript:", transcript);
+
+    // 3️⃣ Groq LLM
+    const systemMsg = {
+      role: "system",
+      content: `You are a mentor. Please respond in original ${req.body.languageCode} language. Also Motivate with your response. Let the response be relevant and add few famous idioms, phrases and quotes of that language. If language is "en-IN", respond in english. Keep response short (under 500 characters) but powerful.`,
+    };
+
+    const chatRes = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [
+        systemMsg,
+        { role: "user", content: transcript },
+      ],
+    });
+
+    const replyText = chatRes.choices[0].message.content.trim();
+    console.log("🤖 AI Reply:", replyText);
+
+    // 4️⃣ TTS
+    const CHUNK_SIZE = 300;
+    const splitText = (str) => {
+      const chunks = [];
+      let remaining = str.trim();
+      while (remaining.length > 0) {
+        let chunk = remaining.slice(0, CHUNK_SIZE);
+        const lastPunct = chunk.lastIndexOf(".");
+        if (lastPunct > 100) chunk = chunk.slice(0, lastPunct + 1);
+        chunks.push(chunk.trim());
+        remaining = remaining.slice(chunk.length).trim();
+      }
+      return chunks;
+    };
+
+    const chunks = splitText(replyText);
+    const audioPaths = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const ttsRes = await fetch("https://api.sarvam.ai/text-to-speech", {
+        method: "POST",
+        headers: {
+          "api-subscription-key": process.env.SARVAM_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: chunks[i],
+          language: req.body.languageCode || "en-IN",
+        }),
+      });
+
+      const ttsJson = await ttsRes.json();
+      const base64Audio = ttsJson?.audios?.[0];
+      if (!base64Audio) continue;
+
+      const buffer = Buffer.from(base64Audio, "base64");
+      const audioPath = path.join(__dirname, "uploads", `chunk_${i}_${Date.now()}.wav`);
+      fs.writeFileSync(audioPath, buffer);
+      audioPaths.push(audioPath);
+    }
+
+    // 5️⃣ Merge chunks
+    const concatListPath = path.join(__dirname, "uploads", `list_${Date.now()}.txt`);
+    fs.writeFileSync(concatListPath, audioPaths.map((p) => `file '${p}'`).join("\n"));
+
+    const finalFilename = `bot_${Date.now()}.wav`;
+    const finalPath = path.join(__dirname, "uploads", finalFilename);
+
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(concatListPath)
+        .inputOptions("-f", "concat", "-safe", "0")
+        .outputOptions("-c", "copy")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(finalPath);
+    });
+    console.log("url: ",finalFilename);
+    // Send final result
+    res.json({
+      text: replyText,
+      audio: `/uploads/${finalFilename}`,
+    });
+
+    // Cleanup after some time
+    setTimeout(() => {
+      for (const file of [inputPath, wavPath, ...audioPaths, concatListPath]) {
+        fs.unlink(file, () => {});
+      }
+    }, 15000);
+
+  } catch (err) {
+    console.error("❌ Error in AI Mentor:", err);
+    res.status(500).json({ error: "Internal error occurred" });
   }
 });
 // ----------------------
