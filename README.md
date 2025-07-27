@@ -5,7 +5,7 @@ An AI-powered voice-first digital companion that makes government services and m
 
 ## 🚀 Overview
 
-**Dial-To-Grow** is a scalable voice-based platform that empowers rural users—like Priya—to access welfare schemes, get mentorship, and gain motivation through an intuitive conversational AI system. Designed with inclusivity at its core, the system works without smartphones or the internet and supports local languages.
+**Dial-To-Grow** is a scalable voice-based platform that empowers rural users—to access welfare schemes, get mentorship, and gain motivation through an intuitive conversational AI system. Designed with inclusivity at its core, the system works without smartphones or the internet and supports local languages.
 
 ---
 
