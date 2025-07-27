@@ -1143,6 +1143,39 @@ app.post("/analyze-audio", upload.single("audio"), async (req, res) => {
   }
 });
 
+// backend: get mentor and mentee id from query
+app.get("/api/query/:queryId/users", async (req, res) => {
+  const { queryId } = req.params;
 
+  try {
+    // Step 1: Get mentee_id from 'queries' table
+    const { data: queryData, error: queryError } = await supabase
+      .from("queries")
+      .select("mentee_id")
+      .eq("id", queryId)
+      .single();
+
+    if (queryError) throw queryError;
+    const mentee_id = queryData.mentee_id;
+
+    // Step 2: Get mentor_id from 'mentor_query_responses' table
+    const { data: mentorData, error: mentorError } = await supabase
+      .from("mentor_query_responses")
+      .select("mentor_id")
+      .eq("query_id", queryId)
+      .eq("status", "accepted")
+      .single(); // Ensure only one accepted mentor per query
+
+    if (mentorError) throw mentorError;
+    const mentor_id = mentorData.mentor_id;
+
+    // Return both
+    res.json({ mentee_id, mentor_id });
+
+  } catch (err) {
+    console.error("❌ Error fetching user roles:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 // ----------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

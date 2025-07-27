@@ -16,7 +16,29 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
   const remoteAudioRef = useRef(null);
   const peerConnectionRef = useRef(null);
   const socketRef = useRef(null);
-
+  let [mentorId, setMentorId] = useState(null);
+  let [menteeId, setMenteeId] = useState(null);
+  useEffect(() => {
+  const fetchUserRoles = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/query/${queryId}/users`);
+      setMentorId(res.data.mentor_id);
+      setMenteeId(res.data.mentee_id);
+      console.log(res.data);
+      console.log(mentorId);
+      console.log(menteeId);
+    } catch (err) {
+      console.error("❌ Failed to fetch mentor/mentee ids:", err.message);
+    }
+  };
+  fetchUserRoles();
+}, [queryId]);
+useEffect(() => {
+  if (mentorId || menteeId) {
+    console.log("Updated mentorId:", mentorId);
+    console.log("Updated menteeId:", menteeId);
+  }
+}, [mentorId, menteeId]);
   useEffect(() => {
     fetchMessages();
     const interval = setInterval(fetchMessages, 3000);
@@ -177,7 +199,11 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
               }`}
             >
               <div className="sender">
-                {msg.sender_id === senderId ? "You" : "Mentor"}
+                {msg.sender_id === senderId
+                  ? "You"
+                  : msg.sender_id === mentorId
+                  ? "Mentor"
+                  : "Mentee"}
               </div>
               {msg.audio_url ? (
                 <audio controls src={`http://localhost:5000${msg.audio_url}`} />
