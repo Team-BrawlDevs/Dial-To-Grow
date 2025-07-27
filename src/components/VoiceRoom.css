@@ -104,7 +104,9 @@
 .message-bubble.own {
   align-self: flex-end;
   background: #d1e7dd;
-  align-items: flex-start; 
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* or center */
 }
 
 .sender {
@@ -114,13 +116,15 @@
 }
 
 .message-bubble audio {
-  width: 100%;
+  width: 240px; /* Fixed width */
+  min-width: 240px;
   height: 36px;
   outline: none;
   border-radius: 6px;
   margin-top: 4px;
   background-color: #f8f9fa;
 }
+
 
 .input-section {
   padding: 12px;
