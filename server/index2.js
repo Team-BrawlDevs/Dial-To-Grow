@@ -1078,6 +1078,71 @@ app.post("/api/chat", upload.single("audio"), async (req, res) => {
   }
 });
 
+app.post("/analyze-audio", upload.single("audio"), async (req, res) => {
+  try {
+    const inputPath = req.file.path;
+    const wavPath = `${inputPath}.wav`;
+
+    // Convert to WAV using FFmpeg
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .toFormat("wav")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(wavPath);
+    });
+
+    // 1️⃣ Sarvam STT
+    const sttForm = new FormData();
+    sttForm.append("file", fs.createReadStream(wavPath));
+    sttForm.append("language_code", "en-IN");
+
+    const sttRes = await fetch("https://api.sarvam.ai/speech-to-text", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": process.env.SARVAM_API_KEY,
+        ...sttForm.getHeaders(),
+      },
+      body: sttForm,
+    });
+
+    const sttJson = await sttRes.json();
+    const transcript = sttJson?.transcript?.trim() || "";
+    console.log("voice chat transcript: ",transcript);
+    // 2️⃣ Groq for abuse detection
+    const systemPrompt = {
+      role: "system",
+      content:
+        "You are a language abuse detector. Given any text, respond ONLY with 'yes' if it contains vulgar, offensive, rude or abusive language. Else respond 'no'. Do not explain anything.",
+    };
+
+    const groqRes = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [systemPrompt, { role: "user", content: transcript }],
+    });
+
+    const reply = groqRes.choices[0].message.content.trim().toLowerCase();
+    console.log("safeAi reply: ",reply);
+    
+    const isAbusive = reply.includes("yes");
+
+    // Cleanup
+    fs.unlinkSync(inputPath);
+    fs.unlinkSync(wavPath);
+
+    return res.json({
+      isAbusive,
+      transcript,
+      message: isAbusive
+        ? "Abusive content detected in the voice message."
+        : "No abusive content found.",
+    });
+  } catch (err) {
+    console.error("❌ Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 // ----------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

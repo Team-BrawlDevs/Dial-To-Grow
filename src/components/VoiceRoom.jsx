@@ -8,6 +8,7 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
   const [messages, setMessages] = useState([]);
   const [textMessage, setTextMessage] = useState("");
   const [inCall, setInCall] = useState(false);
+  const [warning, setWarning] = useState(null);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -48,15 +49,28 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
 
       const formData = new FormData();
       formData.append("audio", blob, `${Date.now()}.webm`);
-      formData.append("sender_id", senderId);
-      formData.append("query_id", queryId);
-      formData.append("message", "[voice]");
 
       try {
-        await axios.post("http://localhost:5000/api/chat", formData);
+        // Analyze audio before saving
+        const analysisRes = await axios.post("http://localhost:5000/analyze-audio", formData);
+        if (analysisRes.data.isAbusive) {
+          setWarning(analysisRes.data.message);
+          return;
+        } else {
+          setWarning(null);
+        }
+
+        // Save audio only if safe
+        const uploadForm = new FormData();
+        uploadForm.append("audio", blob, `${Date.now()}.webm`);
+        uploadForm.append("sender_id", senderId);
+        uploadForm.append("query_id", queryId);
+        uploadForm.append("message", "[voice]");
+
+        await axios.post("http://localhost:5000/api/chat", uploadForm);
         fetchMessages();
       } catch (err) {
-        console.error("Failed to send voice message:", err);
+        console.error("Failed to analyze or send voice message:", err);
       }
     };
 
@@ -99,8 +113,6 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
     peerConnectionRef.current.ontrack = (event) => {
       const remoteStream = new MediaStream();
       remoteStream.addTrack(event.track);
-      console.log("connected");
-      
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = remoteStream;
       }
@@ -176,6 +188,16 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
           ))}
           <div ref={messagesEndRef} />
         </div>
+
+        {warning && (
+  <div className="popup-overlay">
+    <div className="popup-warning">
+      <h3>⚠️ Inappropriate Language Detected</h3>
+      <p>{warning}</p>
+      <button onClick={() => setWarning(null)}>Close</button>
+    </div>
+  </div>
+)}
 
         <div className="chat-controls">
           <input
