@@ -18,6 +18,18 @@ const VoiceRoom = ({ sender, queryId, senderId }) => {
   const socketRef = useRef(null);
   let [mentorId, setMentorId] = useState(null);
   let [menteeId, setMenteeId] = useState(null);
+  const [aiCoachText, setAiCoachText] = useState(null);
+  const [aiCoachAudio, setAiCoachAudio] = useState(null);
+  const [showAiPopup, setShowAiPopup] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  useEffect(() => {
+  const currentUser = parseInt(localStorage.getItem("userId"), 10);
+  if (currentUser) {
+    setCurrentUserId(currentUser);
+    console.log("curr isd:",currentUserId);
+  }
+}, []);
   useEffect(() => {
   const fetchUserRoles = async () => {
     try {
@@ -91,6 +103,22 @@ useEffect(() => {
 
         await axios.post("http://localhost:5000/api/chat", uploadForm);
         fetchMessages();
+        // 🎯 If the voice was sent by mentee, trigger AI coach
+if (senderId === menteeId) {
+  const aiForm = new FormData();
+  aiForm.append("audio", blob);
+  aiForm.append("languageCode", "en-IN"); // Or as needed
+
+  try {
+    const aiRes = await axios.post("http://localhost:5000/api/mentor-coach", aiForm);
+    console.log("🧠 AI Mentor Suggestion:", aiRes.data);
+    setAiCoachText(aiRes.data.text);
+    setAiCoachAudio(`http://localhost:5000${aiRes.data.audio}`);
+    setShowAiPopup(true);
+  } catch (err) {
+    console.error("❌ AI coach failed:", err);
+  }
+}
       } catch (err) {
         console.error("Failed to analyze or send voice message:", err);
       }
@@ -226,6 +254,26 @@ useEffect(() => {
     </div>
   </div>
 )}
+{currentUserId === mentorId && aiCoachText && (
+  <button
+    className="ai-recommendation-btn"
+    onClick={() => setShowAiPopup(true)}
+  >
+    🤖 AI Recommendation
+  </button>
+)}
+{showAiPopup && (
+  <div className="popup-overlay">
+    <div className="popup-warning">
+      <h3>🤖 AI Mentor Suggestion</h3>
+      <p>{aiCoachText}</p>
+      <audio controls autoPlay src={aiCoachAudio} />
+      <button onClick={() => setShowAiPopup(false)}>Close</button>
+    </div>
+  </div>
+)}
+
+
 
         <div className="chat-controls">
           <input
