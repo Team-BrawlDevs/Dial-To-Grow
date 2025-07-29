@@ -22,20 +22,39 @@ const MenteeDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchMentor = async () => {
+    const fetchMentorAndCache = async () => {
       try {
-        const res = await axios.get(
+        const mentorRes = await axios.get(
           `http://localhost:5000/api/assigned-mentor/${user.id}`
         );
-        if (res.data && res.data.query_id) {
-          setQueryId(res.data.query_id);
-          setMentorName(res.data.mentor?.name || "Mentor");
+
+        if (mentorRes.data && mentorRes.data.query_id) {
+          const queryId = mentorRes.data.query_id;
+          const mentorName = mentorRes.data.mentor?.name || "Mentor";
+
+          setQueryId(queryId);
+          setMentorName(mentorName);
+
+          // ✅ Cache podcast episodes for offline
+          const episodesRes = await axios.get(
+            `http://localhost:5000/api/podcast-episodes/${queryId}?mentee_id=${user.id}`
+          );
+          const episodesKey = `episodes_${user.id}_${queryId}`;
+          localStorage.setItem(episodesKey, JSON.stringify(episodesRes.data));
         }
+
+        // ✅ Cache course list for offline
+        const courseRes = await axios.get(
+          `http://localhost:5000/api/courses/${user.id}`
+        );
+        const courseKey = `courses_${user.id}`;
+        localStorage.setItem(courseKey, JSON.stringify(courseRes.data));
       } catch (err) {
-        console.error("Error fetching mentor:", err);
+        console.error("Offline caching error:", err);
       }
     };
-    fetchMentor();
+
+    fetchMentorAndCache();
   }, [user.id]);
 
   const startRecording = async () => {

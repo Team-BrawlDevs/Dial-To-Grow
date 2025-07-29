@@ -10,15 +10,44 @@ const ExploreCourses = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/courses/${userId}`)
-      .then(res => {
-        setCourses(res.data);
+    const localKey = `courses_${userId}`;
+
+    const loadCourses = async () => {
+      setLoading(true);
+
+      // Try to load from localStorage first
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setCourses(parsed);
+          setLoading(false);
+        } catch (e) {
+          console.warn("Corrupt cached data:", e);
+        }
+      }
+
+      // Then try to fetch from API if online
+      if (navigator.onLine) {
+        try {
+          const res = await axios.get(
+            `http://localhost:5000/api/courses/${userId}`
+          );
+          setCourses(res.data);
+          localStorage.setItem(localKey, JSON.stringify(res.data));
+          setLoading(false);
+        } catch (err) {
+          console.error("Failed to fetch from API:", err);
+          setLoading(false);
+        }
+      } else if (!cached) {
+        // If offline and no cache
+        setCourses([]);
         setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load courses:", err);
-        setLoading(false);
-      });
+      }
+    };
+
+    loadCourses();
   }, [userId]);
 
   const containerStyle = {
@@ -28,25 +57,25 @@ const ExploreCourses = () => {
     backgroundColor: "#fafafa",
     borderRadius: "12px",
     boxShadow: "0 4px 10px rgba(0, 0, 0, 0.08)",
-    fontFamily: "Arial, sans-serif"
+    fontFamily: "Arial, sans-serif",
   };
 
   const headingStyle = {
     textAlign: "center",
     fontSize: "24px",
     marginBottom: "25px",
-    color: "#333"
+    color: "#333",
   };
 
   const messageStyle = {
     textAlign: "center",
     fontSize: "16px",
-    color: "#777"
+    color: "#777",
   };
 
   const listStyle = {
     listStyleType: "none",
-    padding: 0
+    padding: 0,
   };
 
   const cardBaseStyle = {
@@ -56,19 +85,19 @@ const ExploreCourses = () => {
     marginBottom: "16px",
     borderRadius: "8px",
     transition: "all 0.3s ease",
-    cursor: "pointer"
+    cursor: "pointer",
   };
 
   const titleStyle = {
     fontSize: "18px",
     fontWeight: "bold",
     marginBottom: "8px",
-    color: "#0056b3"
+    color: "#0056b3",
   };
 
   const descriptionStyle = {
     fontSize: "15px",
-    color: "#444"
+    color: "#444",
   };
 
   return (
@@ -87,7 +116,7 @@ const ExploreCourses = () => {
               boxShadow: isHovered
                 ? "0 6px 15px rgba(0, 0, 0, 0.1)"
                 : "0 2px 6px rgba(0, 0, 0, 0.05)",
-              transform: isHovered ? "scale(1.02)" : "scale(1)"
+              transform: isHovered ? "scale(1.02)" : "scale(1)",
             };
 
             return (

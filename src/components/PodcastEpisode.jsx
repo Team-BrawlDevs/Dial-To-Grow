@@ -8,16 +8,44 @@ const PodcastEpisodes = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:5000/api/podcast-episodes/${podcastId}?mentee_id=${userId}`)
-      .then((res) => {
-        setEpisodes(res.data);
+    const localKey = `episodes_${userId}_${podcastId}`;
+
+    const loadEpisodes = async () => {
+      setLoading(true);
+
+      // Try loading from localStorage first
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setEpisodes(parsed);
+          setLoading(false);
+        } catch (err) {
+          console.warn("Invalid cached data:", err);
+        }
+      }
+
+      // If online, try fetching latest
+      if (navigator.onLine) {
+        try {
+          const res = await axios.get(
+            `http://localhost:5000/api/podcast-episodes/${podcastId}?mentee_id=${userId}`
+          );
+          setEpisodes(res.data);
+          localStorage.setItem(localKey, JSON.stringify(res.data));
+          setLoading(false);
+        } catch (err) {
+          console.error("Failed to load episodes from API:", err);
+          setLoading(false);
+        }
+      } else if (!cached) {
+        // If no cache and offline
+        setEpisodes([]);
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load episodes:", err);
-        setLoading(false);
-      });
+      }
+    };
+
+    loadEpisodes();
   }, [userId, podcastId]);
 
   return (
@@ -40,7 +68,13 @@ const PodcastEpisodes = () => {
               backgroundColor: "#f9f9f9",
             }}
           >
-            <h3 style={{ fontSize: "20px", fontWeight: "500", marginBottom: "10px" }}>
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "500",
+                marginBottom: "10px",
+              }}
+            >
               {ep.title}
             </h3>
             <audio controls src={ep.audio_url} style={{ width: "100%" }} />
