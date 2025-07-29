@@ -8,7 +8,7 @@ const Register = () => {
     email: "",
     password: "",
     age: "",
-    role: "mentee",
+    role: "",
     region: "",
     career: "",
     expertise: "",
