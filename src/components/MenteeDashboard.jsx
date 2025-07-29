@@ -34,13 +34,6 @@ const MenteeDashboard = () => {
 
           setQueryId(queryId);
           setMentorName(mentorName);
-
-          // ✅ Cache podcast episodes for offline
-          const episodesRes = await axios.get(
-            `http://localhost:5000/api/podcast-episodes/${queryId}?mentee_id=${user.id}`
-          );
-          const episodesKey = `episodes_${user.id}_${queryId}`;
-          localStorage.setItem(episodesKey, JSON.stringify(episodesRes.data));
         }
 
         // ✅ Cache course list for offline
@@ -49,6 +42,23 @@ const MenteeDashboard = () => {
         );
         const courseKey = `courses_${user.id}`;
         localStorage.setItem(courseKey, JSON.stringify(courseRes.data));
+        console.log(courseRes.data);
+
+        // // ✅ Cache podcast episodes for offline
+        for (const course of courseRes.data) {
+          try {
+            const episodesRes = await axios.get(
+              `http://localhost:5000/api/podcast-episodes/${course.id}?mentee_id=${user.id}`
+            );
+            const episodesKey = `episodes_${user.id}_${course.id}`;
+            localStorage.setItem(episodesKey, JSON.stringify(episodesRes.data));
+          } catch (err) {
+            console.error(
+              `Failed to fetch episodes for course ID ${course.id}:`,
+              err
+            );
+          }
+        }
       } catch (err) {
         console.error("Offline caching error:", err);
       }
