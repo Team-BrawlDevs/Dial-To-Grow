@@ -33,11 +33,22 @@ const VoiceRoomWrapper = () => {
   );
 };
 const App = () => {
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+
+  // Role-based redirection logic
+  const getRedirectPath = () => {
+    if (!storedUser) return "/login";
+    const { id, role } = storedUser;
+    if (role === "mentee") return `/mentee/${id}`;
+    if (role === "mentor") return `/mentor/${id}`;
+    return "/login"; // fallback
+  };
+
   return (
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<Navigate to={getRedirectPath()} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/mentee/:id" element={<MenteeDashboard />} />

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "../auth";
 
 const MentorDashboard = () => {
+  const { logout } = useContext(AuthContext);
   const user = JSON.parse(localStorage.getItem("user")); // Must contain mentor's ID, name, and expertise
   const [requests, setRequests] = useState([]);
-  const navigate=useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user?.id) {
@@ -47,6 +50,32 @@ const MentorDashboard = () => {
 
   return (
     <div className="container">
+      {/* Logout Button */}
+      <button
+        onClick={() => {
+          logout();
+          navigate("/login");
+        }}
+        style={{
+          position: "absolute",
+          top: "5px",
+          right: "200px",
+          width: "100px",
+          padding: "8px 12px",
+          backgroundColor: "#ff4d4d",
+          color: "white",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          transition: "background-color 0.3s ease",
+        }}
+        onMouseEnter={(e) => (e.target.style.backgroundColor = "#d63333")}
+        onMouseLeave={(e) => (e.target.style.backgroundColor = "#ff4d4d")}
+      >
+        Logout
+      </button>
+
       <h2>Welcome Mentor {user?.name || "User"}</h2>
       <p>This is your dashboard.</p>
       <button
@@ -70,19 +99,29 @@ const MentorDashboard = () => {
             <p>
               <strong>Query:</strong> {r.transcription}
             </p>
-            <div style={{display:"flex", justifyContent:"center", gap:"30px"}}>
-            <button
-              onClick={() => handleResponse(r.id, r.menteeName, "accept")}
-              style={{marginTop:"5px", backgroundColor:"green", width:"100px"}}
+            <div
+              style={{ display: "flex", justifyContent: "center", gap: "30px" }}
             >
-              Accept
-            </button>
-            <button
-            style={{marginTop:"5px", backgroundColor:"orangered", width:"100px"}}
-              onClick={() => handleResponse(r.id, r.menteeName, "reject")}
-            >
-              Reject
-            </button>
+              <button
+                onClick={() => handleResponse(r.id, r.menteeName, "accept")}
+                style={{
+                  marginTop: "5px",
+                  backgroundColor: "green",
+                  width: "100px",
+                }}
+              >
+                Accept
+              </button>
+              <button
+                style={{
+                  marginTop: "5px",
+                  backgroundColor: "orangered",
+                  width: "100px",
+                }}
+                onClick={() => handleResponse(r.id, r.menteeName, "reject")}
+              >
+                Reject
+              </button>
             </div>
           </div>
         ))

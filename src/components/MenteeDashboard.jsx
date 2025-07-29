@@ -5,8 +5,12 @@ import VoiceRoom from "./VoiceRoom";
 import { FaDiscourse } from "react-icons/fa";
 import { BsRecordCircle } from "react-icons/bs";
 import { RiCommunityFill } from "react-icons/ri";
+import { useContext } from "react";
+import { AuthContext } from "../auth";
 
 const MenteeDashboard = () => {
+  const { logout } = useContext(AuthContext);
+
   const user = JSON.parse(localStorage.getItem("user"));
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
@@ -119,6 +123,31 @@ const MenteeDashboard = () => {
         <RiCommunityFill style={{ marginRight: "7px" }} />
         Join Community
       </button>
+      {/* Logout Button */}
+      <button
+        onClick={() => {
+          logout();
+          navigate("/login");
+        }}
+        style={{
+          position: "absolute",
+          top: "5px",
+          right: "200px",
+          width: "100px",
+          padding: "8px 12px",
+          backgroundColor: "#ff4d4d",
+          color: "white",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          transition: "background-color 0.3s ease",
+        }}
+        onMouseEnter={(e) => (e.target.style.backgroundColor = "#d63333")}
+        onMouseLeave={(e) => (e.target.style.backgroundColor = "#ff4d4d")}
+      >
+        Logout
+      </button>
 
       <div className="container">
         <h2>Welcome Mentee {user?.name || "User"}</h2>
@@ -161,7 +190,9 @@ const MenteeDashboard = () => {
             onMouseEnter={(e) => (e.target.style.backgroundColor = "#e67600")}
             onMouseLeave={(e) => (e.target.style.backgroundColor = "orange")}
           >
-            {isRecording ? "Stop Recording" : (
+            {isRecording ? (
+              "Stop Recording"
+            ) : (
               <>
                 <BsRecordCircle style={{ marginRight: "6px" }} />
                 Record Query
@@ -170,7 +201,9 @@ const MenteeDashboard = () => {
           </button>
         </div>
 
-        {status && <p style={{ marginTop: "20px", fontWeight: "bold" }}>{status}</p>}
+        {status && (
+          <p style={{ marginTop: "20px", fontWeight: "bold" }}>{status}</p>
+        )}
 
         {audioURL && (
           <div style={{ marginTop: "15px" }}>
@@ -181,7 +214,11 @@ const MenteeDashboard = () => {
         {queryId && (
           <div style={{ marginTop: "30px" }}>
             <h3>Chat with {mentorName}</h3>
-            <VoiceRoom mediaRec={mediaRecorderRef} queryId={queryId} senderId={user?.id} />
+            <VoiceRoom
+              mediaRec={mediaRecorderRef}
+              queryId={queryId}
+              senderId={user?.id}
+            />
           </div>
         )}
       </div>
